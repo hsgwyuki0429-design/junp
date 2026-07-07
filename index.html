@@ -571,17 +571,7 @@ let newBestCelebrated = false;
 let stickState = { active: false, identifier: null, startX: 0, startY: 0, moveX: 0 };
 
 let exploreInput = { active: false, lastX: 0, lastY: 0 };
-
-let bgBubbles = []; // v2
-for (let i = 0; i < 60; i++) {
-  bgBubbles.push({
-    x: Math.random() * 2000,
-    y: Math.random() * 2000,
-    r: 8 + Math.random() * 46,
-    speed: 0.2 + Math.random() * 1.0,
-    opacity: 0.08 + Math.random() * 0.22
-  });
-}
+let punch = 0; // 大技を決めた瞬間の画面パンチ(ズームバウンス)演出
 
 function updateZoomFromSlider(val) {
   zoomBaseValue = parseFloat(val);
@@ -769,6 +759,7 @@ function startGame(mode, cpuLevel = 1) {
   particles = [];
   shockwaves = [];
   combo.count = 0; combo.timer = 0;
+  punch = 0; shake.mag = 0; shake.t = 0;
   cpuRace.active = false;
   
   if (mode === 'cpu') {
@@ -841,6 +832,12 @@ function shakeScreen(mag, frames = 10) {
   shake.mag = Math.max(shake.mag, mag);
   shake.t = Math.max(shake.t, frames);
 }
+
+// ドーパミン演出: 大技の瞬間に画面をグッとズームさせる
+function punchZoom(amount) { punch = Math.max(punch, amount); }
+
+// ドーパミン演出: モバイル端末への振動フィードバック(触覚も中毒性に効く)
+function vibrate(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
 
 // ドーパミン演出: 着地地点から広がる衝撃波リング
 function spawnShockwave(x, y, color, maxR = 70) {
@@ -1209,13 +1206,14 @@ function update() {
     player.jumpBuffer = 0;
     player.scaleX = 0.6; player.scaleY = 1.4;
     playSound('jump');
+    vibrate(8);
     createParticle(player.x + player.w/2, player.y + player.h, '#fff', 8);
   }
   if (player.jumpBuffer > 0) player.jumpBuffer--;
   if (gameMode === 'poison' || gameMode === 'hard') {
     const baseSpeed = gameMode === 'hard' ? 2.3 : CONFIG.POISON_SPEED;
     poisonY -= baseSpeed;
-    if (player.y + player.h > poisonY) { playSound('dead'); showResult(score); }
+    if (player.y + player.h > poisonY) { playSound('dead'); vibrate(60); showResult(score); }
   }
 
   player.x += player.vx;
@@ -1233,13 +1231,14 @@ function update() {
         playSound('booster'); player.vy = -35; player.scaleX = 0.4; player.scaleY = 2.5;
         createParticle(player.x + player.w/2, player.y, '#fbbf24', 18);
         spawnShockwave(player.x + player.w/2, player.y + player.h, '#fbbf24', 100);
-        shakeScreen(7, 12);
+        shakeScreen(7, 12); punchZoom(0.05); vibrate([12, 30, 18]);
         return;
       }
       if (p.type === 'slime') {
         playSound('slime'); player.vy = -28; player.scaleX = 0.5; player.scaleY = 2.0;
         createParticle(player.x + player.w/2, player.y, '#22c55e', 12);
         spawnShockwave(player.x + player.w/2, player.y + player.h, '#22c55e', 70);
+        vibrate(15);
         return;
       }
       if (p.type === 'conveyor') player.vx += p.dir * 0.9;
@@ -1257,7 +1256,7 @@ function update() {
         if (combo.timer > 0) combo.count++; else combo.count = 1;
         combo.timer = 100;
         playCombo(combo.count - 1);
-        if (combo.count >= 3 && combo.count % 3 === 0) popComboText(combo.count);
+        if (combo.count >= 3 && combo.count % 3 === 0) { popComboText(combo.count); punchZoom(0.035); vibrate([10, 20, 10, 20, 14]); }
       }
     }
   });
@@ -1287,7 +1286,7 @@ function update() {
     triggerAchievement('NEW BEST!', 'newbest');
     triggerFlash('#ffe89a');
     confettiBurst(player.x + player.w/2, player.y, 100);
-    shakeScreen(9, 20);
+    shakeScreen(9, 20); punchZoom(0.09); vibrate([20, 40, 20, 40, 30]);
   }
   // 高速移動中は残像トレイルを出す（ドーパミン演出）
   if (Math.abs(player.vy) > 12 && frameCount % 2 === 0) {
@@ -1301,12 +1300,13 @@ function update() {
     triggerAchievement(msgs[idx]);
     triggerFlash('#ffffff');
     confettiBurst(player.x + player.w/2, player.y);
-    shakeScreen(5, 10);
+    shakeScreen(5, 10); punchZoom(0.05); vibrate([15, 25, 20]);
   }
   if (gameMode === 'cpu') updateCpuRace();
-  if (player.y > camera.y + canvas.height + 800) { 
-    if (gameMode === 'free') { playSound('dead'); resetPlayer(); }
-    else { playSound('dead'); showResult(score); }
+  if (player.y > camera.y + canvas.height + 800) {
+    playSound('dead'); vibrate(60);
+    if (gameMode === 'free') resetPlayer();
+    else showResult(score);
   }
 }
 
@@ -1331,46 +1331,43 @@ function resetPlayer() {
   if (gameMode === 'cpu') initCpuRace();
 }
 
-// 上品なオーロラ配色(藍→紫→マゼンタ→ティール)を巡回させる。虹色に振らず、常に隣り合う2色だけを混ぜる。
-const AURORA_BG = [
-  { top: [13, 18, 48],  bot: [4, 5, 15], accent: [91, 157, 255] },
-  { top: [30, 18, 66],  bot: [7, 5, 18], accent: [176, 124, 255] },
-  { top: [48, 16, 56],  bot: [9, 4, 16], accent: [255, 110, 199] },
-  { top: [16, 30, 60],  bot: [4, 8, 19], accent: [62, 224, 255] },
+// 単色の背景カラー(藍・紫・マゼンタ・青・ティール)を短い間隔でパッと切り替える。グラデーションにはしない。
+const FLAT_BG = [
+  { fill: [12, 15, 42],  accent: [91, 157, 255] },
+  { fill: [28, 14, 58],  accent: [176, 124, 255] },
+  { fill: [46, 12, 46],  accent: [255, 110, 199] },
+  { fill: [12, 28, 54],  accent: [62, 224, 255] },
+  { fill: [10, 42, 46],  accent: [80, 220, 190] },
 ];
+const FLAT_BG_HARD = [
+  { fill: [38, 4, 4],  accent: [255, 94, 58] },
+  { fill: [46, 10, 4], accent: [255, 140, 40] },
+  { fill: [34, 4, 10], accent: [255, 60, 90] },
+];
+const BG_HOLD = 46;   // 一色を保持するフレーム数(約0.77秒ごとに切替 = 結構な頻度)
+const BG_BLEND = 9;   // 切替の瞬間だけ素早くクロスフェード
 function lerpRGB(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
 function rgbStr(c, a = 1) { return `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`; }
-function auroraAt(phase) {
-  const n = AURORA_BG.length;
-  const seg = phase * n, i = Math.floor(seg) % n, j = (i + 1) % n, t = seg - Math.floor(seg);
-  return {
-    top: lerpRGB(AURORA_BG[i].top, AURORA_BG[j].top, t),
-    bot: lerpRGB(AURORA_BG[i].bot, AURORA_BG[j].bot, t),
-    accent: lerpRGB(AURORA_BG[i].accent, AURORA_BG[j].accent, t)
-  };
+function flatBgAt(list, frame) {
+  const n = list.length;
+  const idx = Math.floor(frame / BG_HOLD) % n;
+  const nextIdx = (idx + 1) % n;
+  const local = frame % BG_HOLD;
+  const t = Math.min(1, local / BG_BLEND);
+  const justSwitched = local < BG_BLEND;
+  return { fill: lerpRGB(list[idx].fill, list[nextIdx].fill, t), accent: list[idx].accent, justSwitched, blendT: t };
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  let topColor, botColor, accentColor;
-  const CYCLE = 2600; // ゆったり~43秒で1周(ドーパミン演出だが上品にゆっくり)
-  if (gameMode === 'hard') {
-    // ハードは深紅の溶岩がゆっくり脈打つ
-    const pulse = 4 + Math.sin(frameCount * 0.05) * 4;
-    topColor = `hsl(${352 + Math.sin(frameCount * 0.01) * 8}, 72%, ${9 + pulse}%)`;
-    botColor = '#050000';
-    accentColor = `hsla(8, 85%, 55%, 0.12)`;
-  } else {
-    const phase = (frameCount % CYCLE) / CYCLE;
-    const pal = auroraAt(phase);
-    const depthDarken = Math.min(score * 0.22, 26);
-    topColor = rgbStr([pal.top[0] - depthDarken, pal.top[1] - depthDarken, pal.top[2] - depthDarken]);
-    botColor = rgbStr(pal.bot);
-    accentColor = rgbStr(pal.accent, 0.14);
+  const list = gameMode === 'hard' ? FLAT_BG_HARD : FLAT_BG;
+  const { fill, accent, justSwitched } = flatBgAt(list, frameCount);
+  ctx.fillStyle = rgbStr(fill); ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // 色が切り替わった瞬間だけ淡いパルス光を一瞬重ねる(中毒性を高めるリズム演出)
+  if (justSwitched) {
+    ctx.fillStyle = rgbStr(accent, 0.09 * (1 - (frameCount % BG_HOLD) / BG_BLEND));
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
-  const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  bg.addColorStop(0, topColor); bg.addColorStop(1, botColor);
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)'; ctx.lineWidth = 1;
   const gridSize = 120;
@@ -1379,17 +1376,6 @@ function draw() {
   for(let x = offsetX - gridSize; x < canvas.width + gridSize; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
   for(let y = offsetY - gridSize; y < canvas.height + gridSize; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
   ctx.stroke(); ctx.restore();
-  bgBubbles.forEach((b, i) => {
-    b.y -= b.speed; if(b.y < -100) { b.y = canvas.height + 100; b.x = Math.random() * canvas.width; }
-    // 各バブルは隣接オーロラ色だけをゆっくり巡回(虹色に振らない)
-    if (gameMode === 'hard') { ctx.fillStyle = 'rgba(255, 90, 70, 1)'; }
-    else {
-      const bPhase = ((frameCount + i * 90) % CYCLE) / CYCLE;
-      ctx.fillStyle = rgbStr(auroraAt(bPhase).accent);
-    }
-    ctx.globalAlpha = b.opacity;
-    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0;
-  });
   ctx.save(); ctx.translate(canvas.width/2, canvas.height/2);
   if (shake.mag > 0.05) {
     ctx.translate((Math.random() - 0.5) * 2 * shake.mag, (Math.random() - 0.5) * 2 * shake.mag);
@@ -1400,6 +1386,9 @@ function draw() {
     const worldHeight = Math.abs(500 - player.y) + 500;
     dynamicZoom = Math.max(0.01, Math.min(1.0, (canvas.height / worldHeight) * 0.8));
   }
+  // ドーパミン演出: 大技を決めた瞬間に画面がグッとズームパンチする
+  dynamicZoom *= 1 + punch;
+  punch *= 0.86;
   ctx.scale(dynamicZoom, dynamicZoom); ctx.translate(-canvas.width/2, -canvas.height/2);
   ctx.save();
   if (!isRunning && !isExploring) {
