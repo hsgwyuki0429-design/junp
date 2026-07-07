@@ -713,18 +713,19 @@ function goHome() {
 }
 
 function getPlatformColor(type, i) {
-  if (gameMode === 'hard' && type === 'normal') return `hsl(${(10 + i * 1.5) % 360}, 60%, 40%)`;
+  // 通常足場は虹色に振らず、藍〜紫〜マゼンタの帯だけで揺らして上品にまとめる
+  if (gameMode === 'hard' && type === 'normal') return `hsl(${350 + Math.sin(i * 0.35) * 14}, 72%, 38%)`;
   switch(type) {
-    case 'moving': return '#4ade80';
-    case 'vanishing': return '#f87171';
-    case 'booster': return '#fbbf24';
-    case 'crumbling': return '#a78bfa';
-    case 'conveyor': return '#38bdf8';
-    case 'ice': return '#e0f2fe';
-    case 'toggle': return '#f472b6';
-    case 'slime': return '#22c55e';
-    case 'gravity_anomaly': return '#ef4444';
-    default: return `hsl(${(210 + i * 1.5) % 360}, 60%, 55%)`;
+    case 'moving': return '#5ee0a8';
+    case 'vanishing': return '#ff6e7a';
+    case 'booster': return '#ffc84a';
+    case 'crumbling': return '#b07cff';
+    case 'conveyor': return '#3ee0ff';
+    case 'ice': return '#bfe8ff';
+    case 'toggle': return '#ff6ec7';
+    case 'slime': return '#4ade9e';
+    case 'gravity_anomaly': return '#ff5f6d';
+    default: return `hsl(${228 + Math.sin(i * 0.35) * 22}, 66%, 60%)`;
   }
 }
 
@@ -1330,24 +1331,42 @@ function resetPlayer() {
   if (gameMode === 'cpu') initCpuRace();
 }
 
+// 上品なオーロラ配色(藍→紫→マゼンタ→ティール)を巡回させる。虹色に振らず、常に隣り合う2色だけを混ぜる。
+const AURORA_BG = [
+  { top: [13, 18, 48],  bot: [4, 5, 15], accent: [91, 157, 255] },
+  { top: [30, 18, 66],  bot: [7, 5, 18], accent: [176, 124, 255] },
+  { top: [48, 16, 56],  bot: [9, 4, 16], accent: [255, 110, 199] },
+  { top: [16, 30, 60],  bot: [4, 8, 19], accent: [62, 224, 255] },
+];
+function lerpRGB(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+function rgbStr(c, a = 1) { return `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`; }
+function auroraAt(phase) {
+  const n = AURORA_BG.length;
+  const seg = phase * n, i = Math.floor(seg) % n, j = (i + 1) % n, t = seg - Math.floor(seg);
+  return {
+    top: lerpRGB(AURORA_BG[i].top, AURORA_BG[j].top, t),
+    bot: lerpRGB(AURORA_BG[i].bot, AURORA_BG[j].bot, t),
+    accent: lerpRGB(AURORA_BG[i].accent, AURORA_BG[j].accent, t)
+  };
+}
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   let topColor, botColor, accentColor;
-  let bubbleHue = (frameCount * 0.6) % 360;
+  const CYCLE = 2600; // ゆったり~43秒で1周(ドーパミン演出だが上品にゆっくり)
   if (gameMode === 'hard') {
-    // ハードでも背景がゆっくり脈打つ（ドーパミン演出）
+    // ハードは深紅の溶岩がゆっくり脈打つ
     const pulse = 4 + Math.sin(frameCount * 0.05) * 4;
-    topColor = `hsl(${(0 + Math.sin(frameCount*0.01)*15)}, 70%, ${8 + pulse}%)`;
+    topColor = `hsl(${352 + Math.sin(frameCount * 0.01) * 8}, 72%, ${9 + pulse}%)`;
     botColor = '#050000';
-    accentColor = `hsla(${(frameCount) % 360}, 90%, 55%, 0.12)`;
+    accentColor = `hsla(8, 85%, 55%, 0.12)`;
   } else {
-    // 時間とともに背景色が結構な頻度で変化し続ける（ドーパミン演出）
-    const hue = (210 - score * 0.1 - frameCount * 0.5) % 360;
-    const saturation = 78 + Math.sin(frameCount * 0.02) * 18;
-    const lightness = 72 - Math.min(score * 0.005, 38) + Math.sin(frameCount * 0.03) * 6;
-    topColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-    botColor = `hsl(${(hue + 50) % 360}, ${saturation - 10}%, ${lightness - 24}%)`;
-    accentColor = `hsla(${hue}, 100%, 55%, 0.12)`;
+    const phase = (frameCount % CYCLE) / CYCLE;
+    const pal = auroraAt(phase);
+    const depthDarken = Math.min(score * 0.22, 26);
+    topColor = rgbStr([pal.top[0] - depthDarken, pal.top[1] - depthDarken, pal.top[2] - depthDarken]);
+    botColor = rgbStr(pal.bot);
+    accentColor = rgbStr(pal.accent, 0.14);
   }
   const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
   bg.addColorStop(0, topColor); bg.addColorStop(1, botColor);
@@ -1362,8 +1381,12 @@ function draw() {
   ctx.stroke(); ctx.restore();
   bgBubbles.forEach((b, i) => {
     b.y -= b.speed; if(b.y < -100) { b.y = canvas.height + 100; b.x = Math.random() * canvas.width; }
-    // 各バブルが虹色にゆっくり変化（ドーパミン演出）
-    ctx.fillStyle = `hsla(${(bubbleHue + i * 18) % 360}, 90%, 60%, 1)`;
+    // 各バブルは隣接オーロラ色だけをゆっくり巡回(虹色に振らない)
+    if (gameMode === 'hard') { ctx.fillStyle = 'rgba(255, 90, 70, 1)'; }
+    else {
+      const bPhase = ((frameCount + i * 90) % CYCLE) / CYCLE;
+      ctx.fillStyle = rgbStr(auroraAt(bPhase).accent);
+    }
     ctx.globalAlpha = b.opacity;
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0;
   });
@@ -1448,7 +1471,12 @@ function draw() {
   ctx.globalAlpha = 1.0;
   if (gameMode === 'poison' || gameMode === 'hard') {
     const pGrad = ctx.createLinearGradient(0, poisonY, 0, poisonY + 1200);
-    pGrad.addColorStop(0, 'rgba(168, 85, 247, 0.6)'); pGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    if (gameMode === 'hard') {
+      // ハードは赤の世界観に合わせて溶岩色の迫り上がりにする
+      pGrad.addColorStop(0, 'rgba(255, 94, 58, 0.55)'); pGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    } else {
+      pGrad.addColorStop(0, 'rgba(176, 124, 255, 0.55)'); pGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    }
     ctx.fillStyle = pGrad; ctx.fillRect(camera.x - 5000, poisonY, canvas.width + 10000, 10000);
   }
   if (!isExploring) {
