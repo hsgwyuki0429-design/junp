@@ -4,176 +4,218 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Aether Reach 2D Gimmick Mastery</title>
-<script src="https://cdn.tailwindcss.com"></script>
 <style>
 :root {
-  --accent: #4287f5;
-  --glass-bg: rgba(10, 12, 28, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.14);
+  --bg: #07070f;
+  --txt: #eef1ff;
+  --txt-dim: rgba(238, 241, 255, 0.55);
+  --txt-faint: rgba(238, 241, 255, 0.34);
+  --glass: rgba(14, 16, 34, 0.6);
+  --glass-hi: rgba(255, 255, 255, 0.07);
+  --brd: rgba(255, 255, 255, 0.12);
+  --blue: #5b9dff; --purple: #b07cff; --pink: #ff6ec7;
+  --cyan: #3ee0ff; --red: #ff5f6d; --gold: #ffc84a;
+  --grad-hero: linear-gradient(115deg, #6aa5ff, #b07cff 48%, #ff6ec7);
+  --r-lg: 22px; --r-md: 16px; --r-full: 999px;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
 body {
-  margin: 0;
-  overflow: hidden;
-  background: #050510;
-  font-family: 'Inter', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  margin: 0; overflow: hidden; background: var(--bg); color: var(--txt);
+  font-family: 'Avenir Next', 'Inter', 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
   touch-action: none;
-  color: white;
 }
+button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; }
 canvas { display: block; }
+.hidden { display: none !important; }
+
+/* ===== HUD ===== */
 .overlay-ui {
   position: absolute; inset: 0; pointer-events: none;
-  display: flex; flex-direction: column; padding: 16px; color: white;
+  display: flex; flex-direction: column;
+  padding: calc(12px + env(safe-area-inset-top)) 14px 14px;
 }
-.glass {
-  background: var(--glass-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--glass-border); border-radius: 18px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+.hud-bar {
+  pointer-events: auto; display: flex; align-items: center; gap: 14px;
+  background: var(--glass); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--brd); border-radius: var(--r-lg);
+  padding: 10px 14px; box-shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
+}
+.hud-cell { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hud-k { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; color: var(--txt-faint); white-space: nowrap; }
+.hud-v {
+  font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: -0.02em; line-height: 1.1;
+  background: var(--grad-hero); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hud-v.small { font-size: 15px; font-style: normal; background: none; -webkit-background-clip: initial; background-clip: initial; color: var(--txt); -webkit-text-fill-color: var(--txt); }
+.hud-sep { width: 1px; align-self: stretch; background: var(--brd); }
+.hud-actions { margin-left: auto; display: flex; gap: 8px; }
+.chip {
+  pointer-events: auto; width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: 13px; background: var(--glass-hi); border: 1px solid var(--brd);
+  font-size: 16px; transition: transform 0.12s, background 0.15s;
+}
+.chip:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.18); }
+.chip.wide {
+  width: auto; padding: 0 16px; font-size: 13px; font-weight: 800;
+  background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 
 /* ===== MENU ===== */
-#menu {
-  position: absolute; inset: 0;
+#menu { position: absolute; inset: 0; z-index: 100; pointer-events: auto; background: var(--bg); overflow: hidden; display: flex; }
+.aurora { position: absolute; inset: -20%; pointer-events: none; filter: blur(70px); opacity: 0.55; }
+.aurora::before, .aurora::after { content: ''; }
+.aurora::before, .aurora::after, .aurora .a3 { position: absolute; width: 58vmax; height: 58vmax; border-radius: 50%; }
+.aurora::before { background: radial-gradient(circle, rgba(91, 157, 255, 0.55), transparent 65%); top: -12%; left: -18%; animation: drift1 17s ease-in-out infinite alternate; }
+.aurora::after { background: radial-gradient(circle, rgba(255, 110, 199, 0.4), transparent 65%); bottom: -22%; right: -16%; animation: drift2 21s ease-in-out infinite alternate; }
+.aurora .a3 { background: radial-gradient(circle, rgba(176, 124, 255, 0.45), transparent 65%); top: 30%; left: 28%; animation: drift3 25s ease-in-out infinite alternate; }
+@keyframes drift1 { to { transform: translate(14%, 16%) scale(1.18); } }
+@keyframes drift2 { to { transform: translate(-16%, -12%) scale(1.22); } }
+@keyframes drift3 { to { transform: translate(-18%, 12%) scale(0.88); } }
+.menu-scroll {
+  position: relative; z-index: 1; width: 100%; height: 100%; overflow-y: auto;
+  display: flex; flex-direction: column; align-items: center;
+  padding: calc(34px + env(safe-area-inset-top)) 20px calc(34px + env(safe-area-inset-bottom));
+  scrollbar-width: none;
+}
+.menu-scroll::-webkit-scrollbar { display: none; }
+.menu-inner { width: 100%; max-width: 380px; margin: auto; }
+.brand { text-align: center; margin-bottom: 26px; }
+.brand h1 {
+  margin: 0; font-size: clamp(34px, 10vw, 42px); font-weight: 900; font-style: italic; letter-spacing: -0.04em;
+  background: var(--grad-hero); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 24px rgba(140, 140, 255, 0.45));
+}
+.brand p { margin: 8px 0 0; font-size: 11px; letter-spacing: 0.34em; color: var(--txt-dim); font-weight: 700; }
+
+.mode-list { display: flex; flex-direction: column; gap: 12px; }
+.mode-card {
+  --a: var(--blue); --a-soft: rgba(91, 157, 255, 0.5); --a-glow: rgba(91, 157, 255, 0.3);
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  padding: 14px 16px; border-radius: var(--r-lg); text-align: left;
+  border: 1.5px solid transparent;
   background:
-    radial-gradient(circle at 20% 10%, rgba(66,135,245,0.18), transparent 45%),
-    radial-gradient(circle at 85% 90%, rgba(192,132,252,0.16), transparent 45%),
-    rgba(5, 5, 16, 0.96);
-  display: flex; flex-direction: column; align-items: center;
-  z-index: 100; pointer-events: auto;
-  overflow-y: auto; padding: 32px 16px;
+    linear-gradient(var(--glass), var(--glass)) padding-box,
+    linear-gradient(120deg, var(--a-soft), rgba(255, 255, 255, 0.08)) border-box;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
+  transition: transform 0.16s cubic-bezier(0.2, 1.4, 0.4, 1), box-shadow 0.2s;
 }
-#menu::-webkit-scrollbar { width: 0; }
-.menu-inner {
-  width: 100%; max-width: 340px; margin: auto;
-  display: flex; flex-direction: column; align-items: center;
+.mode-card:active { transform: scale(0.97); }
+@media (hover: hover) {
+  .mode-card:hover { transform: translateY(-3px); box-shadow: 0 16px 38px rgba(0, 0, 0, 0.45), 0 0 26px var(--a-glow); }
 }
-.title-glow {
-  background: linear-gradient(90deg, #6ea8ff, #c084fc, #ff9dd6);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 0 18px rgba(120,150,255,0.5));
-  animation: hue-cycle 8s linear infinite;
+.mode-icon {
+  width: 52px; height: 52px; flex: none; display: grid; place-items: center;
+  font-size: 25px; border-radius: 16px;
+  background: linear-gradient(140deg, var(--a-soft), rgba(255, 255, 255, 0.04));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
 }
-@keyframes hue-cycle { to { filter: hue-rotate(360deg) drop-shadow(0 0 18px rgba(120,150,255,0.5)); } }
+.mode-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mode-name { font-size: 17px; font-weight: 900; letter-spacing: 0.02em; }
+.mode-sub { font-size: 11.5px; color: var(--txt-dim); font-weight: 600; }
+.mode-arrow { margin-left: auto; font-size: 24px; color: var(--txt-faint); font-weight: 300; }
 
-.btn-mode {
-  width: 100%; padding: 16px 18px; margin: 7px 0; font-weight: 800;
-  text-align: center; cursor: pointer; transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
-  border: 2px solid rgba(255,255,255,0.16); border-radius: 16px;
-  background: rgba(255,255,255,0.04);
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
+.pill-row { display: flex; gap: 10px; margin-top: 16px; }
+.pill {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 13px 8px; border-radius: var(--r-full);
+  background: var(--glass-hi); border: 1px solid var(--brd);
+  font-size: 13px; font-weight: 800; transition: transform 0.12s, background 0.15s;
 }
-.btn-mode:hover, .btn-mode:active { background: rgba(255,255,255,0.12); transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.4); }
-.btn-mode .m-emoji { font-size: 22px; line-height: 1; }
-.btn-setting {
-  background: rgba(255, 255, 255, 0.08);
-  padding: 11px 22px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.24);
-  margin-top: 10px; cursor: pointer; font-size: 13px; font-weight: bold; text-align: center;
-  transition: background 0.2s; width: 100%;
+.pill:active { transform: scale(0.96); background: rgba(255, 255, 255, 0.16); }
+.pill.gold { border-color: rgba(255, 200, 74, 0.45); background: rgba(255, 200, 74, 0.1); }
+
+.settings-card {
+  margin-top: 16px; padding: 16px; border-radius: var(--r-lg);
+  background: var(--glass); border: 1px solid var(--brd);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  display: flex; flex-direction: column; gap: 14px;
 }
-.btn-setting:hover { background: rgba(255,255,255,0.16); }
-.section-card {
-  width: 100%; margin-top: 14px; background: rgba(255,255,255,0.04);
-  padding: 14px 16px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.1);
-}
-.section-label { font-size: 10px; opacity: 0.6; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 10px; text-align: center; }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.set-label { font-size: 10px; font-weight: 800; letter-spacing: 0.2em; color: var(--txt-faint); flex: none; }
+.swatches { display: flex; gap: 9px; }
 .color-btn {
-  width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
-  border: 2px solid rgba(255,255,255,0.3); transition: all 0.2s;
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
 }
-.color-btn:hover { transform: scale(1.18); }
-.color-btn.selected { border-color: white; box-shadow: 0 0 12px rgba(255,255,255,0.9); transform: scale(1.15); }
+.color-btn.selected { border-color: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16), 0 0 14px currentColor; transform: scale(1.12); }
+.set-divider { height: 1px; background: var(--brd); }
+.zoom-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+#zoom-value-label { font-size: 12px; font-weight: 900; color: var(--cyan); }
+input[type=range] { width: 100%; height: 26px; accent-color: var(--purple); cursor: pointer; }
+.menu-hint { margin: 18px 0 0; text-align: center; font-size: 11px; color: var(--txt-faint); font-weight: 600; line-height: 1.7; }
 
-/* ===== MOBILE CONTROLS ===== */
-#mobile-btns {
-  position: absolute; bottom: 34px; width: 100%; display: flex;
-  justify-content: space-between; align-items: flex-end; padding: 0 26px; pointer-events: none;
+/* ===== SHEETS (チュートリアル / CPU選択 / リザルト) ===== */
+.sheet {
+  position: absolute; inset: 0; z-index: 110; display: none; pointer-events: auto;
+  background: rgba(7, 7, 15, 0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  flex-direction: column; align-items: center; overflow-y: auto;
+  padding: calc(30px + env(safe-area-inset-top)) 18px calc(30px + env(safe-area-inset-bottom));
+  scrollbar-width: none;
 }
-.m-btn {
-  width: 68px; height: 68px; background: rgba(255,255,255,0.09);
-  backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.22);
-  border-radius: 50%; pointer-events: auto; display: flex;
-  align-items: center; justify-content: center; font-weight: bold; font-size: 22px;
-  user-select: none; transition: background 0.1s, transform 0.1s;
+.sheet::-webkit-scrollbar { display: none; }
+#cpu-select { z-index: 105; }
+#tutorial { z-index: 115; }
+.sheet-inner { width: 100%; max-width: 460px; margin: auto; }
+.sheet-title {
+  margin: 0 0 4px; text-align: center; font-size: 27px; font-weight: 900; font-style: italic; letter-spacing: -0.02em;
+  background: var(--grad-hero); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.m-btn:active { background: rgba(255,255,255,0.28); transform: scale(0.92); }
-#stick-container {
-  position: absolute; bottom: 44px; left: 40px;
-  width: 130px; height: 130px;
-  background: radial-gradient(circle, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
-  border: 1px solid rgba(255,255,255,0.18);
-  border-radius: 50%; display: none; pointer-events: auto;
-}
-#stick-knob {
-  position: absolute; top: 50%; left: 50%;
-  width: 56px; height: 56px;
-  background: radial-gradient(circle, rgba(255,255,255,0.6), rgba(255,255,255,0.25));
-  box-shadow: 0 0 16px rgba(120,150,255,0.6);
-  border-radius: 50%; transform: translate(-50%, -50%);
-}
+.sheet-sub { margin: 0 0 20px; text-align: center; font-size: 12px; color: var(--txt-dim); font-weight: 600; }
 
-/* ===== RESULT / CPU SELECT / TUTORIAL ===== */
-#result-screen {
-  position: absolute; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(6px);
-  display: none; flex-direction: column; align-items: center; justify-content: center;
-  z-index: 110; color: white; pointer-events: auto; padding: 20px;
-}
-#result-screen .btn-mode { max-width: 300px; }
-#cpu-select {
-  position: absolute; inset: 0; background: rgba(5, 5, 16, 0.97);
-  flex-direction: column; align-items: center; justify-content: center;
-  z-index: 105; pointer-events: auto; display: none; padding: 20px;
-}
-.cpu-grid {
-  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px; width: min(420px, 92vw); margin-top: 18px;
-}
-.cpu-level {
-  padding: 16px 0; border-radius: 14px; text-align: center; cursor: pointer;
-  border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08);
-  color: white; font-weight: 900; transition: all 0.15s;
-}
-.cpu-level:hover { background: rgba(120,150,255,0.28); transform: translateY(-2px); }
-.cpu-back {
-  margin-top: 20px; padding: 11px 22px; border-radius: 999px; cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08);
-  color: white; font-size: 13px; font-weight: 800;
-}
-.cpu-back:hover { background: rgba(255,255,255,0.16); }
-
-/* Tutorial */
-#tutorial {
-  position: absolute; inset: 0; background: rgba(5, 5, 16, 0.97);
-  z-index: 115; pointer-events: auto; display: none;
-  flex-direction: column; align-items: center; padding: 26px 16px; overflow-y: auto;
-}
-#tutorial::-webkit-scrollbar { width: 0; }
-.tut-inner { width: 100%; max-width: 460px; }
+.tut-section { font-size: 10px; font-weight: 800; letter-spacing: 0.22em; color: var(--txt-faint); margin: 18px 0 8px; }
 .tut-block {
-  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
-  border-radius: 12px; background: rgba(255,255,255,0.05); margin-bottom: 8px;
-  border: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 12px; padding: 11px 13px; margin-bottom: 7px;
+  border-radius: 14px; background: var(--glass-hi); border: 1px solid rgba(255, 255, 255, 0.07);
 }
-.tut-chip { width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0; box-shadow: 0 0 8px currentColor; }
-.tut-name { font-weight: 800; font-size: 14px; }
-.tut-desc { font-size: 12px; opacity: 0.72; line-height: 1.35; }
+.tut-chip { width: 26px; height: 26px; border-radius: 8px; flex: none; box-shadow: 0 0 10px currentColor; }
+.tut-name { font-weight: 800; font-size: 13.5px; }
+.tut-desc { font-size: 11.5px; color: var(--txt-dim); line-height: 1.45; }
 
-/* ===== HUD BUTTONS ===== */
-.hud-btns { position: absolute; top: 92px; left: 16px; display: flex; gap: 8px; pointer-events: none; }
-.btn-hud {
-  pointer-events: auto; background: rgba(10,12,28,0.55); backdrop-filter: blur(10px);
-  padding: 9px 15px; border-radius: 12px; font-size: 11px; font-weight: 900;
-  color: white; cursor: pointer; border: 1px solid rgba(255,255,255,0.18);
-  transition: background 0.15s;
+.cpu-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 4px 0; }
+.cpu-level {
+  padding: 16px 0; border-radius: 14px; text-align: center; width: 100%;
+  border: 1px solid rgba(62, 224, 255, 0.28); background: rgba(62, 224, 255, 0.07);
+  font-weight: 900; font-size: 15px; color: var(--cyan);
+  transition: transform 0.12s, filter 0.15s;
 }
-.btn-hud:hover, .btn-hud:active { background: rgba(255,255,255,0.18); }
-#explore-home {
-  position: absolute; top: 16px; left: 16px; pointer-events: auto;
-  z-index: 200; display: none;
+.cpu-level:nth-child(n+4) { border-color: rgba(255, 200, 74, 0.3); background: rgba(255, 200, 74, 0.07); color: var(--gold); }
+.cpu-level:nth-child(n+8) { border-color: rgba(255, 95, 109, 0.32); background: rgba(255, 95, 109, 0.08); color: #ff8a93; }
+.cpu-level:active { transform: scale(0.92); }
+@media (hover: hover) { .cpu-level:hover { transform: translateY(-2px); filter: brightness(1.4); } }
+
+.btn-primary {
+  display: block; width: 100%; max-width: 320px; margin: 18px auto 0; padding: 15px;
+  border-radius: var(--r-full); text-align: center; font-weight: 900; font-size: 15px;
+  background: var(--grad-hero); color: #0b0b18;
+  box-shadow: 0 10px 28px rgba(150, 110, 255, 0.35);
+  transition: transform 0.14s;
 }
+.btn-primary:active { transform: scale(0.97); }
+.btn-ghost {
+  display: block; width: 100%; max-width: 320px; margin: 10px auto 0; padding: 14px;
+  border-radius: var(--r-full); text-align: center; font-weight: 800; font-size: 14px;
+  background: var(--glass-hi); border: 1px solid var(--brd);
+  transition: transform 0.14s, background 0.15s;
+}
+.btn-ghost:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.15); }
+
+.result-inner { margin: auto; width: 100%; max-width: 340px; text-align: center; }
+#final-alt-text {
+  margin: 2px 0 10px; font-size: 62px; font-weight: 900; font-style: italic; letter-spacing: -0.03em;
+  background: var(--grad-hero); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 26px rgba(150, 110, 255, 0.4));
+}
+
+/* ===== 探索 / 警告 / 演出 ===== */
+#explore-home { position: absolute; top: calc(16px + env(safe-area-inset-top)); left: 16px; z-index: 200; display: none; pointer-events: auto; }
 .warning-poison {
-  position: absolute; bottom: 18px; width: 100%; text-align: center;
-  color: #f472b6; font-weight: 900; font-size: 14px; animation: pulse 1s infinite;
-  display: none; pointer-events: none; text-shadow: 0 0 12px rgba(244,114,182,0.8);
+  position: absolute; bottom: calc(130px + env(safe-area-inset-bottom)); width: 100%; text-align: center;
+  color: var(--pink); font-weight: 900; font-size: 14px; letter-spacing: 0.2em;
+  text-shadow: 0 0 14px rgba(255, 110, 199, 0.8);
+  animation: pulse 1s infinite; display: none; pointer-events: none;
 }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
@@ -182,186 +224,211 @@ canvas { display: block; }
   opacity: 0; pointer-events: none; z-index: 200;
   font-size: 14vw; font-weight: 900; font-style: italic; text-transform: uppercase;
   color: #000;
-  -webkit-text-stroke: 2px rgba(255,255,255,0.8);
-  text-shadow: 10px 10px 0 rgba(0,0,0,0.5), -2px 2px 0 rgba(255,255,255,0.2);
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.8);
+  text-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5), -2px 2px 0 rgba(255, 255, 255, 0.2);
   transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-  white-space: nowrap;
-  letter-spacing: -0.05em;
-  background: rgba(0,0,0,0.4);
-  padding: 0 60px;
-  mix-blend-mode: difference;
+  white-space: nowrap; letter-spacing: -0.05em;
+  background: rgba(0, 0, 0, 0.4); padding: 0 60px; mix-blend-mode: difference;
 }
-#achievement-popup.active {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-  letter-spacing: 0.1em;
-}
-/* Dopamine full-screen flash */
+#achievement-popup.active { opacity: 1; transform: translate(-50%, -50%) scale(1); letter-spacing: 0.1em; }
 #screen-flash {
   position: absolute; inset: 0; z-index: 150; pointer-events: none;
-  opacity: 0; background: white; transition: opacity 0.5s ease-out;
-  mix-blend-mode: screen;
+  opacity: 0; background: white; transition: opacity 0.5s ease-out; mix-blend-mode: screen;
 }
 #screen-flash.active { opacity: 0.55; transition: opacity 0.05s; }
 
-.zoom-slider-container {
-  width: 100%; margin-top: 12px; background: rgba(255,255,255,0.05);
-  padding: 14px 16px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.1);
+/* ===== モバイル操作 ===== */
+#mobile-btns {
+  position: absolute; bottom: calc(30px + env(safe-area-inset-bottom)); width: 100%;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 0 24px; pointer-events: none;
 }
-input[type=range] {
-  width: 100%; cursor: pointer; accent-color: var(--accent);
+@media (min-width: 768px) { #mobile-btns { display: none; } }
+.move-group { display: flex; gap: 14px; }
+.m-btn {
+  width: 66px; height: 66px; display: flex; align-items: center; justify-content: center;
+  background: var(--glass-hi); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255, 255, 255, 0.2); border-radius: 50%;
+  font-weight: 900; font-size: 20px; user-select: none; pointer-events: auto;
+  transition: background 0.1s, transform 0.1s;
 }
-.hidden { display: none; }
+.m-btn:active { background: rgba(255, 255, 255, 0.26); transform: scale(0.92); }
+.m-btn.jump {
+  width: 112px; border-radius: 26px; font-size: 15px; letter-spacing: 0.1em; margin-left: auto;
+  background: linear-gradient(135deg, rgba(91, 157, 255, 0.5), rgba(176, 124, 255, 0.55));
+  border-color: rgba(150, 160, 255, 0.5);
+  box-shadow: 0 0 22px rgba(120, 140, 255, 0.35);
+}
+#stick-container {
+  position: absolute; bottom: 0; left: 34px;
+  width: 132px; height: 132px; display: none; pointer-events: auto;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 50%;
+}
+#stick-knob {
+  position: absolute; top: 50%; left: 50%;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.75), rgba(160, 170, 255, 0.3));
+  box-shadow: 0 0 18px rgba(120, 150, 255, 0.55);
+  transform: translate(-50%, -50%);
+}
 </style>
 </head>
 <body>
 
 <div id="menu">
- <div class="menu-inner">
-  <h1 class="text-4xl font-black mb-1 tracking-tighter italic title-glow">AETHER REACH</h1>
-  <p class="text-white/50 font-bold mb-6 tracking-[0.25em] text-[10px] uppercase">エーテルの果てへ登れ</p>
+  <div class="aurora"><div class="a3"></div></div>
+  <div class="menu-scroll">
+    <div class="menu-inner">
+      <div class="brand">
+        <h1>AETHER REACH</h1>
+        <p>エーテルの果てへ登れ</p>
+      </div>
 
-  <div class="btn-mode" style="border-color: rgba(110,168,255,0.5)" onclick="startGame('free')">
-    <div class="m-emoji">🕊️</div>
-    <div class="text-lg">フリーラン</div>
-    <div class="text-[10px] opacity-55">自由に高みを目指す</div>
-  </div>
+      <div class="mode-list">
+        <button class="mode-card" style="--a:#5b9dff; --a-soft:rgba(91,157,255,0.5); --a-glow:rgba(91,157,255,0.3)" onclick="startGame('free')">
+          <span class="mode-icon">🕊️</span>
+          <span class="mode-txt"><span class="mode-name">フリーラン</span><span class="mode-sub">自由に高みを目指す</span></span>
+          <span class="mode-arrow">›</span>
+        </button>
+        <button class="mode-card" style="--a:#b07cff; --a-soft:rgba(176,124,255,0.5); --a-glow:rgba(176,124,255,0.3)" onclick="startGame('poison')">
+          <span class="mode-icon">☠️</span>
+          <span class="mode-txt"><span class="mode-name">ポイズンラン</span><span class="mode-sub">迫る毒から逃げ切れ</span></span>
+          <span class="mode-arrow">›</span>
+        </button>
+        <button class="mode-card" style="--a:#ff5f6d; --a-soft:rgba(255,95,109,0.5); --a-glow:rgba(255,95,109,0.3)" onclick="startGame('hard')">
+          <span class="mode-icon">🔥</span>
+          <span class="mode-txt"><span class="mode-name">ハードモード</span><span class="mode-sub">極限の修羅場に挑む</span></span>
+          <span class="mode-arrow">›</span>
+        </button>
+        <button class="mode-card" style="--a:#3ee0ff; --a-soft:rgba(62,224,255,0.5); --a-glow:rgba(62,224,255,0.28)" onclick="openCpuSelect()">
+          <span class="mode-icon">🤖</span>
+          <span class="mode-txt"><span class="mode-name">CPUバトル</span><span class="mode-sub">20体のAIと登頂レース</span></span>
+          <span class="mode-arrow">›</span>
+        </button>
+      </div>
 
-  <div class="btn-mode" style="border-color: rgba(192,132,252,0.6); background: rgba(88,28,135,0.18)" onclick="startGame('poison')">
-    <div class="m-emoji">☠️</div>
-    <div class="text-lg">ポイズンラン</div>
-    <div class="text-[10px] opacity-55">迫る毒から逃げ切れ</div>
-  </div>
+      <div class="pill-row">
+        <button class="pill gold" onclick="openTutorial()">📖 遊び方</button>
+        <button class="pill" onclick="toggleControls()">🎮 <span id="control-label">スティック</span></button>
+      </div>
 
-  <div class="btn-mode" style="border-color: rgba(239,68,68,0.6); background: rgba(127,29,29,0.18)" onclick="startGame('hard')">
-    <div class="m-emoji">🔥</div>
-    <div class="text-lg">ハードモード</div>
-    <div class="text-[10px] opacity-55">極限の修羅場に挑む</div>
-  </div>
+      <div class="settings-card">
+        <div class="set-row">
+          <span class="set-label">カラー</span>
+          <div class="swatches">
+            <div class="color-btn selected" style="background:#4287f5;color:#4287f5" onclick="setPlayerColor(this, '#4287f5')"></div>
+            <div class="color-btn" style="background:#f87171;color:#f87171" onclick="setPlayerColor(this, '#f87171')"></div>
+            <div class="color-btn" style="background:#4ade80;color:#4ade80" onclick="setPlayerColor(this, '#4ade80')"></div>
+            <div class="color-btn" style="background:#fbbf24;color:#fbbf24" onclick="setPlayerColor(this, '#fbbf24')"></div>
+            <div class="color-btn" style="background:#c084fc;color:#c084fc" onclick="setPlayerColor(this, '#c084fc')"></div>
+            <div class="color-btn" style="background:#ffffff;color:#ffffff" onclick="setPlayerColor(this, '#ffffff')"></div>
+          </div>
+        </div>
+        <div class="set-divider"></div>
+        <div>
+          <div class="zoom-head">
+            <span class="set-label">視野の広さ</span>
+            <span id="zoom-value-label">最大</span>
+          </div>
+          <input type="range" id="zoom-slider" min="0.5" max="1.0" step="0.05" value="0.5" oninput="updateZoomFromSlider(this.value)">
+        </div>
+      </div>
 
-  <div class="btn-mode" style="border-color: rgba(34,211,238,0.6); background: rgba(8,51,68,0.22)" onclick="openCpuSelect()">
-    <div class="m-emoji">🤖</div>
-    <div class="text-lg text-cyan-200">CPUバトル</div>
-    <div class="text-[10px] opacity-55">20体のAIと登頂レース</div>
-  </div>
-
-  <div class="btn-setting" style="border-color: rgba(250,204,21,0.5); background: rgba(120,90,10,0.18)" onclick="openTutorial()">
-    📖 遊び方・チュートリアル
-  </div>
-
-  <div class="btn-setting" onclick="toggleControls()">
-    操作方法: <span id="control-label">スティック</span>
-  </div>
-
-  <div class="section-card">
-    <div class="section-label">プレイヤーカラー</div>
-    <div class="flex gap-3 justify-center">
-      <div class="color-btn selected" style="background: #4287f5" onclick="setPlayerColor(this, '#4287f5')"></div>
-      <div class="color-btn" style="background: #f87171" onclick="setPlayerColor(this, '#f87171')"></div>
-      <div class="color-btn" style="background: #4ade80" onclick="setPlayerColor(this, '#4ade80')"></div>
-      <div class="color-btn" style="background: #fbbf24" onclick="setPlayerColor(this, '#fbbf24')"></div>
-      <div class="color-btn" style="background: #c084fc" onclick="setPlayerColor(this, '#c084fc')"></div>
-      <div class="color-btn" style="background: #ffffff" onclick="setPlayerColor(this, '#ffffff')"></div>
+      <p class="menu-hint">⌨️ A / D で移動・スペースでジャンプ<br>📱 スマホは画面下のスティック & JUMP</p>
     </div>
   </div>
+</div>
 
-  <div class="zoom-slider-container">
-    <div class="flex justify-between text-[10px] text-white/60 mb-2 uppercase tracking-widest font-bold">
-      <span>視野の広さ</span>
-      <span id="zoom-value-label">最大</span>
+<div id="tutorial" class="sheet">
+  <div class="sheet-inner">
+    <h2 class="sheet-title">遊び方</h2>
+    <p class="sheet-sub">足場の色＝能力。特徴を覚えて頂上を目指そう！</p>
+
+    <div class="tut-block" style="color:#6ea8ff"><div class="tut-chip" style="background:#4287f5"></div><div><div class="tut-name" style="color:var(--txt)">操作</div><div class="tut-desc">左右で移動、スペース／JUMPでジャンプ。ジャンプ直後の猶予があるので端ギリギリでも跳べる。</div></div></div>
+    <div class="tut-section">足場の色と能力</div>
+    <div class="tut-block" style="color:#4287f5"><div class="tut-chip" style="background:#4287f5"></div><div><div class="tut-name">青 / ノーマル</div><div class="tut-desc">普通の足場。安全に着地できる基本ブロック。</div></div></div>
+    <div class="tut-block" style="color:#4ade80"><div class="tut-chip" style="background:#4ade80"></div><div><div class="tut-name">緑 / ムービング</div><div class="tut-desc">左右にゆっくり動く。乗ると一緒に運ばれる。</div></div></div>
+    <div class="tut-block" style="color:#f87171"><div class="tut-chip" style="background:#f87171"></div><div><div class="tut-name">赤 / バニッシュ</div><div class="tut-desc">一定周期で点滅して消える。消える前に飛び移ろう。</div></div></div>
+    <div class="tut-block" style="color:#fbbf24"><div class="tut-chip" style="background:#fbbf24"></div><div><div class="tut-name">黄 / ブースター</div><div class="tut-desc">乗った瞬間に大ジャンプ！一気に上へ飛べる。</div></div></div>
+    <div class="tut-block" style="color:#a78bfa"><div class="tut-chip" style="background:#a78bfa"></div><div><div class="tut-name">紫 / クランブル</div><div class="tut-desc">乗ると崩れ落ちる。素早く次へ渡ろう（時間で復活）。</div></div></div>
+    <div class="tut-block" style="color:#38bdf8"><div class="tut-chip" style="background:#38bdf8"></div><div><div class="tut-name">水色 / コンベア</div><div class="tut-desc">ベルトのように片方向へ流される。矢印が向き。</div></div></div>
+    <div class="tut-block" style="color:#e0f2fe"><div class="tut-chip" style="background:#e0f2fe"></div><div><div class="tut-name">氷 / アイス</div><div class="tut-desc">ツルツル滑って止まりにくい。慣性に注意。</div></div></div>
+    <div class="tut-block" style="color:#22c55e"><div class="tut-chip" style="background:#22c55e"></div><div><div class="tut-name">黄緑 / スライム</div><div class="tut-desc">ポヨンと弾む。ブースターより控えめな連続ジャンプ。</div></div></div>
+    <div class="tut-block" style="color:#f472b6"><div class="tut-chip" style="background:#f472b6"></div><div><div class="tut-name">ピンク / トグル</div><div class="tut-desc">周期で実体化⇔すり抜けを切替。光っている時だけ乗れる。</div></div></div>
+    <div class="tut-block" style="color:#7dd3fc"><div class="tut-chip" style="background:#7dd3fc"></div><div><div class="tut-name">空色 / ウィンド</div><div class="tut-desc">上空に上昇気流。上を通ると押し上げられ滞空できる。</div></div></div>
+    <div class="tut-block" style="color:#ef4444"><div class="tut-chip" style="background:#ef4444"></div><div><div class="tut-name">赤発光 / 重力異常 (ハード)</div><div class="tut-desc">乗ると重力が弱まりフワッと浮く。ハードモード限定。</div></div></div>
+
+    <button class="btn-ghost" onclick="closeTutorial()">閉じる</button>
+  </div>
+</div>
+
+<div id="cpu-select" class="sheet">
+  <div class="sheet-inner" style="max-width: 420px;">
+    <h2 class="sheet-title">CPUバトル</h2>
+    <p class="sheet-sub">難易度を選択（Lv.1 のんびり 〜 Lv.10 人間級AI）</p>
+    <div class="cpu-grid">
+      <button class="cpu-level" onclick="startCpuRace(1)">1</button>
+      <button class="cpu-level" onclick="startCpuRace(2)">2</button>
+      <button class="cpu-level" onclick="startCpuRace(3)">3</button>
+      <button class="cpu-level" onclick="startCpuRace(4)">4</button>
+      <button class="cpu-level" onclick="startCpuRace(5)">5</button>
+      <button class="cpu-level" onclick="startCpuRace(6)">6</button>
+      <button class="cpu-level" onclick="startCpuRace(7)">7</button>
+      <button class="cpu-level" onclick="startCpuRace(8)">8</button>
+      <button class="cpu-level" onclick="startCpuRace(9)">9</button>
+      <button class="cpu-level" onclick="startCpuRace(10)">10</button>
     </div>
-    <input type="range" id="zoom-slider" min="0.5" max="1.0" step="0.05" value="0.5" oninput="updateZoomFromSlider(this.value)">
+    <button class="btn-ghost" onclick="closeCpuSelect()">もどる</button>
   </div>
-  <p class="mt-6 opacity-40 text-xs text-center">A / D または スティックで移動・スペースでジャンプ</p>
- </div>
 </div>
 
-<div id="tutorial">
- <div class="tut-inner">
-  <h2 class="text-2xl font-black italic tracking-tighter text-center mb-1 title-glow">遊び方</h2>
-  <p class="text-center text-white/50 text-xs mb-5">足場の色 = 能力。特徴を覚えて頂上を目指そう！</p>
-
-  <div class="tut-block" style="color:#6ea8ff"><div class="tut-chip" style="background:#4287f5"></div><div><div class="tut-name text-white">操作</div><div class="tut-desc">左右で移動、スペース／JUMPでジャンプ。ジャンプ直後の猶予があるので端ギリギリでも跳べる。</div></div></div>
-  <h3 class="text-xs uppercase tracking-widest opacity-50 mt-4 mb-2">足場の色と能力</h3>
-  <div class="tut-block" style="color:#4287f5"><div class="tut-chip" style="background:#4287f5"></div><div><div class="tut-name">青 / ノーマル</div><div class="tut-desc">普通の足場。安全に着地できる基本ブロック。</div></div></div>
-  <div class="tut-block" style="color:#4ade80"><div class="tut-chip" style="background:#4ade80"></div><div><div class="tut-name">緑 / ムービング</div><div class="tut-desc">左右にゆっくり動く。乗ると一緒に運ばれる。</div></div></div>
-  <div class="tut-block" style="color:#f87171"><div class="tut-chip" style="background:#f87171"></div><div><div class="tut-name">赤 / バニッシュ</div><div class="tut-desc">一定周期で点滅して消える。消える前に飛び移ろう。</div></div></div>
-  <div class="tut-block" style="color:#fbbf24"><div class="tut-chip" style="background:#fbbf24"></div><div><div class="tut-name">黄 / ブースター</div><div class="tut-desc">乗った瞬間に大ジャンプ！一気に上へ飛べる。</div></div></div>
-  <div class="tut-block" style="color:#a78bfa"><div class="tut-chip" style="background:#a78bfa"></div><div><div class="tut-name">紫 / クランブル</div><div class="tut-desc">乗ると崩れ落ちる。素早く次へ渡ろう（時間で復活）。</div></div></div>
-  <div class="tut-block" style="color:#38bdf8"><div class="tut-chip" style="background:#38bdf8"></div><div><div class="tut-name">水色 / コンベア</div><div class="tut-desc">ベルトのように片方向へ流される。矢印が向き。</div></div></div>
-  <div class="tut-block" style="color:#e0f2fe"><div class="tut-chip" style="background:#e0f2fe"></div><div><div class="tut-name">氷 / アイス</div><div class="tut-desc">ツルツル滑って止まりにくい。慣性に注意。</div></div></div>
-  <div class="tut-block" style="color:#22c55e"><div class="tut-chip" style="background:#22c55e"></div><div><div class="tut-name">黄緑 / スライム</div><div class="tut-desc">ポヨンと弾む。ブースターより控えめな連続ジャンプ。</div></div></div>
-  <div class="tut-block" style="color:#f472b6"><div class="tut-chip" style="background:#f472b6"></div><div><div class="tut-name">ピンク / トグル</div><div class="tut-desc">周期で実体化⇔すり抜けを切替。光っている時だけ乗れる。</div></div></div>
-  <div class="tut-block" style="color:#7dd3fc"><div class="tut-chip" style="background:#7dd3fc"></div><div><div class="tut-name">空色 / ウィンド</div><div class="tut-desc">上空に上昇気流。上を通ると押し上げられ滞空できる。</div></div></div>
-  <div class="tut-block" style="color:#ef4444"><div class="tut-chip" style="background:#ef4444"></div><div><div class="tut-name">赤発光 / 重力異常 (ハード)</div><div class="tut-desc">乗ると重力が弱まりフワッと浮く。ハードモード限定。</div></div></div>
-
-  <div class="cpu-back" style="width:100%; text-align:center; margin-top:22px;" onclick="closeTutorial()">閉じる</div>
- </div>
-</div>
-
-<div id="cpu-select">
-  <h2 class="text-3xl font-black tracking-tighter italic text-cyan-300">CPUバトル</h2>
-  <p class="mt-2 text-xs tracking-[0.2em] text-white/50">難易度を選択 (Lv.1 やさしい 〜 Lv.10 最強AI)</p>
-  <div class="cpu-grid">
-    <div class="cpu-level" onclick="startCpuRace(1)">1</div>
-    <div class="cpu-level" onclick="startCpuRace(2)">2</div>
-    <div class="cpu-level" onclick="startCpuRace(3)">3</div>
-    <div class="cpu-level" onclick="startCpuRace(4)">4</div>
-    <div class="cpu-level" onclick="startCpuRace(5)">5</div>
-    <div class="cpu-level" onclick="startCpuRace(6)">6</div>
-    <div class="cpu-level" onclick="startCpuRace(7)">7</div>
-    <div class="cpu-level" onclick="startCpuRace(8)">8</div>
-    <div class="cpu-level" onclick="startCpuRace(9)">9</div>
-    <div class="cpu-level" onclick="startCpuRace(10)">10</div>
+<div id="result-screen" class="sheet">
+  <div class="result-inner">
+    <h2 class="sheet-title">リザルト</h2>
+    <div id="final-alt-text">0m</div>
+    <button class="btn-primary" onclick="closeResult()">メニューへ戻る</button>
+    <button class="btn-ghost" onclick="startExploring()">🔭 ワールドを探索する</button>
   </div>
-  <div class="cpu-back" onclick="closeCpuSelect()">もどる</div>
-</div>
-
-<div id="result-screen">
-  <h2 class="text-2xl font-bold mb-2 tracking-tighter">リザルト</h2>
-  <div id="final-alt-text" class="text-6xl font-black text-purple-400 mb-8 italic">0m</div>
-  <div class="btn-mode" style="max-width:300px; background: rgba(255,255,255,0.08)" onclick="closeResult()">メニューへ戻る</div>
-  <div class="btn-mode" style="max-width:300px; border-color: rgba(34,211,238,0.6); background: rgba(8,51,68,0.3)" onclick="startExploring()">ワールドを探索する</div>
 </div>
 
 <div id="explore-home">
-  <div class="btn-hud" onclick="goHome()">🏠 ホーム</div>
+  <button class="chip wide" onclick="goHome()">🏠 ホーム</button>
 </div>
 
 <div id="achievement-popup">GREAT!</div>
 <div id="screen-flash"></div>
 
 <div class="overlay-ui">
-  <div class="flex justify-between items-start gap-3">
-    <div class="glass p-4 min-w-[120px]">
-      <div id="mode-label" class="text-[10px] opacity-50 uppercase tracking-widest">FREE RUN</div>
-      <div id="alt-val" class="text-3xl font-black italic">0m</div>
+  <div class="hud-bar">
+    <div class="hud-cell">
+      <div class="hud-k" id="mode-label">フリーラン</div>
+      <div class="hud-v" id="alt-val">0m</div>
     </div>
-    <div class="glass p-4 text-right">
-      <div class="text-[10px] opacity-50 tracking-widest">ベスト記録</div>
-      <div id="best-val" class="text-xl font-bold">0m</div>
+    <div class="hud-sep"></div>
+    <div class="hud-cell">
+      <div class="hud-k">ベスト</div>
+      <div class="hud-v small" id="best-val">0m</div>
+    </div>
+    <div id="cpu-hud" class="hud-cell hidden">
+      <div class="hud-k">CPU生存</div>
+      <div class="hud-v small" id="cpu-status">--</div>
+    </div>
+    <div class="hud-actions">
+      <button class="chip" onclick="rebuildLevel()" title="ステージを作り直す">🔄</button>
+      <button class="chip" onclick="goHome()" title="ホームへ戻る">🏠</button>
     </div>
   </div>
-
-  <div id="cpu-hud" class="glass p-4 mt-3 hidden">
-    <div class="text-[10px] opacity-50 tracking-widest">CPU 生存数</div>
-    <div id="cpu-status" class="text-xl font-bold">--</div>
-  </div>
-
-  <div class="hud-btns">
-    <div class="btn-hud" onclick="rebuildLevel()">🔄 作り直す</div>
-    <div class="btn-hud" onclick="goHome()">🏠 ホーム</div>
-  </div>
-  <div id="poison-warning" class="warning-poison tracking-[0.2em]">☠️ 毒が迫っている！</div>
+  <div id="poison-warning" class="warning-poison">☠️ 毒が迫っている！</div>
 </div>
 
-<div id="mobile-btns" class="md:hidden">
-  <div id="btn-group-move" class="flex gap-4">
-    <div id="m-left" class="m-btn text-white">◀</div>
-    <div id="m-right" class="m-btn text-white">▶</div>
+<div id="mobile-btns">
+  <div id="btn-group-move" class="move-group">
+    <div id="m-left" class="m-btn">◀</div>
+    <div id="m-right" class="m-btn">▶</div>
   </div>
   <div id="stick-container"><div id="stick-knob"></div></div>
-  <div id="m-jump" class="m-btn text-white" style="background: rgba(66, 135, 245, 0.42); width: 104px; border-radius: 22px; margin-left: auto; font-size: 15px;">JUMP</div>
+  <div id="m-jump" class="m-btn jump">JUMP</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -650,7 +717,8 @@ function startGame(mode, cpuLevel = 1) {
   isExploring = false;
   document.getElementById('menu').style.display = 'none';
   document.getElementById('cpu-select').style.display = 'none';
-  document.getElementById('mode-label').innerText = mode.toUpperCase().replace('_', ' ');
+  const modeNames = { free: 'フリーラン', poison: 'ポイズンラン', hard: 'ハードモード', cpu: 'CPUバトル' };
+  document.getElementById('mode-label').innerText = modeNames[mode] || mode;
   document.getElementById('poison-warning').style.display = mode === 'poison' ? 'block' : 'none';
   document.getElementById('cpu-hud').classList.toggle('hidden', mode !== 'cpu');
   document.getElementById('explore-home').style.display = 'none';
@@ -668,7 +736,7 @@ function startGame(mode, cpuLevel = 1) {
   cpuRace.active = false;
   
   if (mode === 'cpu') {
-    document.getElementById('mode-label').innerText = `ADVANCED AI CPU Lv.${cpuLevel}`;
+    document.getElementById('mode-label').innerText = `CPUバトル Lv.${cpuLevel}`;
     initCpuRace();
   }
 }
@@ -739,39 +807,32 @@ function confettiBurst(cx, cy) {
 function initCpuRace() {
   cpuRacers = [];
   cpuRace = { active: true, nextCheckpoint: 200, cleared: 0, total: 20, checkpointStep: 200 };
-  for (let i = 0; i < cpuRace.total; i++) {
-    // 物理パラメータのベース個体差
-    const speedVar = 0.95 + Math.random() * 0.15;
-    const accelVar = 0.9 + Math.random() * 0.3;
-    const jumpVar = 0.96 + Math.random() * 0.1;
-    
-    // 難易度(cpuModeLevel 1〜10)に応じた明確なAIクラスの割り当て
-    // Lv1-2: ランダムウォーカー
-    // Lv3-4: グリーディークライマー
-    // Lv5-6: フィジクスアウェア
-    // Lv7-8: マルチホッププランナー
-    // Lv9-10: オプティマルレーサー
-    const level = cpuModeLevel;
-    let strategyClass = "GreedyClimber";
-    if (level <= 2) strategyClass = "RandomWalker";
-    else if (level <= 4) strategyClass = "GreedyClimber";
-    else if (level <= 6) strategyClass = "PhysicsAware";
-    else if (level <= 8) strategyClass = "MultiHopPlanner";
-    else strategyClass = "OptimalRacer";
 
-    // 難易度と戦略クラスに基づいた個別性格パラメータ設計
+  // レベル(1〜10)を 0〜1 に正規化。Lv10 = 上手い人間プレイヤーと同等の速度と判断力
+  const level = cpuModeLevel;
+  const t = (level - 1) / 9;
+
+  for (let i = 0; i < cpuRace.total; i++) {
+    // 個体ごとのわずかなばらつき
+    const speedVar = 0.97 + Math.random() * 0.06;
+    const accelVar = 0.95 + Math.random() * 0.1;
+    const jumpVar = 0.98 + Math.random() * 0.04;
+
     const personality = {
-      strategyClass: strategyClass,
-      reactionDelay: Math.max(0, Math.floor((11 - level) * 2.2)), // 低レベルほど大きな判断ディレイ
-      riskTolerance: level <= 4 ? 0.8 : (level <= 8 ? 0.2 : 0.5),   // 中位AIは危険を避け、最高位AIはあえて活用する
-      aggressionLevel: 0.2 + (level * 0.08),                       // 高いほど長距離ジャンプに挑戦
-      jumpPrecision: 0.5 + (level * 0.05),                         // ジャンプタイミングと補正の正確さ
-      boosterAffinity: level >= 7,                                 // 7以上でギミック足場を能動的ターゲットに
+      reactionDelay: Math.round(16 - 15 * t) + Math.floor(Math.random() * 3), // 着地→踏切の判断フレーム (Lv10:約1f = 人間の反射)
+      steerPrecision: 0.4 + 0.6 * t,      // 空中軌道補正の効き(人間のエアコントロール相当)
+      steerNoise: (1 - t) * 0.5,          // 低レベルほど空中操作がブレる
+      targetNoise: (1 - t) * 80 + 12,     // ターゲット選択のミス幅(px)
+      gimmickBonus: level >= 5 ? 90 : 0,  // Lv5+はブースター/スライムを積極的に狙う
+      reachFactor: 0.75 + 0.17 * t,       // ジャンプ最高到達点の何割までを「確実に届く」と見なすか(欲張ると届かない)
+      launchTolerance: 14 + t * 26,       // 踏切位置の許容幅(空中補正を見込んで早めに跳ぶ度合い)
+      hesitProb: (1 - t) * 0.7,           // 着地後に「ためらう」確率(初心者ほど考え込む)
+      hesitFrames: (1 - t) * 70           // ためらいの最大フレーム数
     };
-    
+
     const startX = 820 + i * 16 + (Math.random() - 0.5) * 40;
     const startY = 400 + (i % 5) * 5;
-    
+
     cpuRacers.push({
       id: i + 1, x: startX, y: startY,
       w: 26, h: 40, vx: 0, vy: 0,
@@ -781,29 +842,19 @@ function initCpuRace() {
       color: `hsl(${(180 + i * 20) % 360}, 70%, 60%)`,
       personality: personality,
       aiBase: {
-        accel: CONFIG.MOVE_ACCEL * accelVar,
-        maxSpeed: CONFIG.MAX_SPEED * speedVar,
+        accel: CONFIG.MOVE_ACCEL * (0.9 + 0.25 * t) * accelVar,
+        maxSpeed: CONFIG.MAX_SPEED * (0.85 + 0.22 * t) * speedVar,
         jumpForce: CONFIG.JUMP_FORCE * jumpVar
       },
-      memory: { 
-        lockedTarget: null, 
+      memory: {
+        lockedTarget: null,
         lastOnPlatform: null,
-        lastPos: {x: startX, y: startY}, 
-        stuckTimer: 0, 
         groundTimer: 0,
-        path: [],
-        emergencyMode: false,
-        lastThinkFrame: 0,
-        readyToJump: false,
-        preparationTimer: 0,
-        edgeStuckTimer: 0,
-        targetLockedTimer: 0,
-        jumpAttempts: 0,
-        blacklistedTargets: new Set(),
-        jumpStopTimer: 0,
-        consecutiveNoProgress: 0,      // 連続非進行カウント
-        lastStuckCheckFrame: 0,        // 30fごとのスタックチェック
-        lastVerticalProgressY: startY  // 進行度比較用高度
+        lastLandFrame: frameCount,
+        readyFrame: frameCount,
+        lastProgressFrame: frameCount,
+        bestY: startY + 40,
+        blacklistedTargets: new Set()
       }
     });
   }
@@ -815,11 +866,12 @@ function initCpuRace() {
 function stepCpu(cpu) {
   if (!cpu.alive) return;
 
+  const P = cpu.personality;
   const cx = cpu.x + cpu.w / 2;
   const cy = cpu.y + cpu.h;
   const gravity = CONFIG.GRAVITY * cpu.gravityFactor;
-  
-  // 個体独自の jumpForce を取得して予測に利用
+
+  // 現在の足場種に応じた踏切ジャンプ力
   let predictedJumpForce = cpu.aiBase.jumpForce;
   if (cpu.currentPlatformType === 'booster') predictedJumpForce = -35;
   else if (cpu.currentPlatformType === 'slime') predictedJumpForce = -28;
@@ -827,202 +879,141 @@ function stepCpu(cpu) {
   if (cpu.isGrounded) cpu.memory.groundTimer++; else cpu.memory.groundTimer = 0;
 
   const currentPlat = cpu.memory.lastOnPlatform;
-  const isOnJumpGimmick = cpu.currentPlatformType === 'booster' || cpu.currentPlatformType === 'slime' || 
+  const isOnJumpGimmick = cpu.currentPlatformType === 'booster' || cpu.currentPlatformType === 'slime' ||
                           (currentPlat && (currentPlat.type === 'booster' || currentPlat.type === 'slime'));
 
-  // タイマー更新 (同じ土台に乗れていない時間を計測)
-  if (cpu.memory.lockedTarget && !cpu.isGrounded) {
-      cpu.memory.targetLockedTimer++;
-  } else if (cpu.isGrounded) {
-      cpu.memory.targetLockedTimer = 0;
+  const justLanded = cpu.isGrounded && cpu.memory.groundTimer === 1;
+  if (justLanded) {
+    cpu.memory.lastLandFrame = frameCount;
+    // 反応時間 + 低レベルほど時々「ためらう」(人間らしい思考の間)
+    const hesitation = Math.random() < P.hesitProb ? Math.random() * P.hesitFrames : 0;
+    cpu.memory.readyFrame = frameCount + P.reactionDelay + hesitation;
   }
 
-  // ★【最重要修正：3秒以上経った際の更新タイミング。jumpStopTimerは完全に撤廃】
-  const isTargetLockedTooLong = cpu.memory.targetLockedTimer >= 180;
+  // ── スタック検知: 高度が240フレーム更新されなければ現ターゲットを見限る ──
+  if (cy < cpu.memory.bestY - 30) {
+    cpu.memory.bestY = cy;
+    cpu.memory.lastProgressFrame = frameCount;
+    cpu.memory.blacklistedTargets.clear();
+  }
+  if (frameCount - cpu.memory.lastProgressFrame > 240 && cpu.memory.lockedTarget) {
+    cpu.memory.blacklistedTargets.add(cpu.memory.lockedTarget.id);
+    cpu.memory.lockedTarget = null;
+    cpu.memory.lastProgressFrame = frameCount;
+  }
 
-  // 着地した瞬間にロックオンを最新に更新
-  const justLanded = cpu.isGrounded && cpu.memory.groundTimer <= 2;
-  const targetInvalid = !cpu.memory.lockedTarget || (cpu.memory.lockedTarget.state !== 'active' || (cpu.memory.lockedTarget.state === 'dead' && cpu.memory.lockedTarget.respawnTimer <= 0));
+  // ── ターゲット選択: ジャンプで届く範囲から「最も高さを稼げる」足場を貪欲に選ぶ ──
+  const targetInvalid = !cpu.memory.lockedTarget || cpu.memory.lockedTarget.state !== 'active';
+  if (justLanded || isOnJumpGimmick || targetInvalid) {
+    const maxJumpHeight = (predictedJumpForce * predictedJumpForce) / (2 * gravity);
+    const airTime = Math.abs(predictedJumpForce / gravity) * 2;
+    const maxH = isOnJumpGimmick ? maxJumpHeight * 6.0 : maxJumpHeight * P.reachFactor;
+    const maxR = isOnJumpGimmick ? cpu.aiBase.maxSpeed * airTime * 2.5 : cpu.aiBase.maxSpeed * airTime * 0.9;
 
-  if (justLanded || isOnJumpGimmick || targetInvalid || isTargetLockedTooLong) {
-    let bestTarget = null;
-    let minVerticalDist = Infinity;
-
-    // 自分より高い位置（p.y < cy）にあるすべてのアクティブな足場候補を取得
-    const candidates = platforms.filter(p => p.y < cy && p.state === 'active');
-
-    candidates.forEach(p => {
+    let best = null;
+    let bestScore = -Infinity;
+    platforms.forEach(p => {
+      if (p.state !== 'active' || p === currentPlat) return;
+      if (p.y > cy - 10 || p.y < cy - maxH) return;
+      if (cpu.memory.blacklistedTargets.has(p.id)) return;
       const dx = Math.abs((p.x + p.w / 2) - cx);
-      const dy = cy - p.y; 
-
-      // 個体独自の jumpForce と maxSpeed を使用して物理的到達可能性の計算（絶対にいけない距離は完全に除外）
-      const maxJumpHeight = (predictedJumpForce * predictedJumpForce) / (2 * gravity);
-      const airTime = Math.abs(predictedJumpForce / gravity) * 2;
-      
-      const currentMaxHorizontalRange = isOnJumpGimmick 
-        ? cpu.aiBase.maxSpeed * airTime * 2.5 
-        : cpu.aiBase.maxSpeed * airTime * 1.35;
-
-      const currentMaxJumpHeight = isOnJumpGimmick ? maxJumpHeight * 6.0 : maxJumpHeight * 1.5;
-
-      // 個体差物理法則的に絶対に届かない距離にある足場は除外
-      if (dy < -250 || dy > currentMaxJumpHeight || dx > currentMaxHorizontalRange) return;
-
-      // 基本的に自分とY座標が最も近い土台をロックオンする
-      if (dy < minVerticalDist) {
-        minVerticalDist = dy;
-        bestTarget = p;
-      }
+      if (dx > maxR) return;
+      const dy = cy - p.y;
+      // 高さゲイン最優先・横移動はペナルティ・ジャンプ系足場はボーナス
+      let s = dy * 1.6 - dx * 0.55;
+      if (p.type === 'booster' || p.type === 'slime') s += P.gimmickBonus;
+      if (p.type === 'vanishing' || p.type === 'toggle') s -= 40;
+      if (p.type === 'crumbling' && p.isTouched) s -= 150;
+      s += (Math.random() - 0.5) * P.targetNoise;
+      if (s > bestScore) { bestScore = s; best = p; }
     });
-
-    if (bestTarget) {
-      cpu.memory.lockedTarget = bestTarget;
-      cpu.memory.targetLockedTimer = 0; // タイマーリセット
-    } else if (targetInvalid || isTargetLockedTooLong) {
-      // セーフティ：物理的限界を無視して最もY座標が近いアクティブな土台を選択
-      let fallbackTarget = null;
-      let fallbackMinY = Infinity;
-      candidates.forEach(p => {
-        if (cy - p.y < fallbackMinY && cy - p.y > 0 && p.state === 'active') {
-          fallbackMinY = cy - p.y;
-          fallbackTarget = p;
-        }
+    if (!best) {
+      // 確実に届く足場が無い: とりあえず一番近い上方足場へ寄る(風・動く足場・スタック解除に期待)
+      let minDy = Infinity;
+      platforms.forEach(p => {
+        if (p.state !== 'active' || p === currentPlat) return;
+        const dy = cy - p.y;
+        if (dy <= 10 || dy > 420) return;
+        if (Math.abs((p.x + p.w / 2) - cx) > maxR * 1.6) return;
+        if (dy < minDy) { minDy = dy; best = p; }
       });
-      cpu.memory.lockedTarget = fallbackTarget;
-      cpu.memory.targetLockedTimer = 0; 
     }
+    if (best) cpu.memory.lockedTarget = best;
   }
 
-  // jumpStopTimerによるジャンプ禁止状態を完全に削除
-  cpu.memory.jumpStopTimer = 0;
-
+  // ── 行動決定 ──
   let moveDir = 0;
-  if (cpu.memory.lockedTarget) {
-    const target = cpu.memory.lockedTarget;
-    
-    // 目的地への到達予測時間（個体差 jumpForce で算出）
-    let tPredict = 30;
-    const discriminantForT = predictedJumpForce * predictedJumpForce - 2 * gravity * (cy - target.y);
-    if (discriminantForT >= 0) {
-        tPredict = (-predictedJumpForce + Math.sqrt(discriminantForT)) / gravity;
-    }
+  const target = cpu.memory.lockedTarget;
+  if (target) {
+    // 着地までの飛行時間を予測
+    let tFly = 30;
+    const disc = predictedJumpForce * predictedJumpForce - 2 * gravity * (cy - target.y);
+    if (disc >= 0) tFly = (-predictedJumpForce + Math.sqrt(disc)) / gravity;
 
-    // 左右に動く土台をロックオンした場合は、着地した未来の瞬間にちょうど足場が動いている予測座標txに飛び移る
+    // 動く足場は着地予定時刻の未来位置を狙う
     let tx = target.x + target.w / 2;
     if (target.type === 'moving') {
-        tx = target.startX + Math.sin((frameCount + tPredict) * 0.02 + target.moveOffset) * 200 + target.w / 2;
+      tx = target.startX + Math.sin((frameCount + tFly) * 0.02 + target.moveOffset) * 200 + target.w / 2;
     }
-
     const hDiff = tx - cx;
-    const vDiff = cy - target.y;
+    const reacted = frameCount >= cpu.memory.readyFrame;
 
     if (cpu.isGrounded) {
-      // 到達判定 (個々の身体能力、加速度、摩擦に基づいた物理シミュレーションを完璧に設計)
-      const hMaxHeight = (predictedJumpForce * predictedJumpForce) / (2 * gravity);
-      const canReachHeight = vDiff < hMaxHeight + 15;
-      
-      const discriminant = predictedJumpForce * predictedJumpForce - 2 * gravity * vDiff;
-      let isPhysicallyPossible = false;
-      let t = 30;
-      
-      if (discriminant >= 0) {
-          t = (-predictedJumpForce + Math.sqrt(discriminant)) / gravity;
-          
-          // 個体独自の加速度と、最高速度、さらに摩擦抵抗 CONFIG.MOVE_FRICTION を加味した未来位置の精密シミュレーション
-          let simulatedVX = cpu.vx;
-          let simulatedX = cx;
-          for (let step = 0; step < t; step++) {
-              const testDir = hDiff > 0 ? 1 : -1;
-              simulatedVX += testDir * cpu.aiBase.accel;
-              simulatedVX = Math.max(-cpu.aiBase.maxSpeed, Math.min(cpu.aiBase.maxSpeed, simulatedVX));
-              simulatedVX *= CONFIG.MOVE_FRICTION;
-              simulatedX += simulatedVX;
-          }
-          
-          // ジャンプ到達時のシミュレーション上の座標が、動くターゲット(tx)の足場サイズの中に完全に収まるか判定
-          const targetHalfWidth = target.w / 2 + 12;
-          isPhysicallyPossible = Math.abs(tx - simulatedX) < targetHalfWidth;
-      } else if (target.type === 'booster') {
-          isPhysicallyPossible = true; 
-      }
-
-      // 消える足場の出現予測
-      let visibleArrival = true;
-      if (target.type === 'vanishing') {
-          const futureFrame = frameCount + t;
-          const period = 120;
-          const cycle = (futureFrame + target.moveOffset * 10) % period;
-          visibleArrival = (cycle < 60); 
-      }
-
-      const isCurrentMoving = currentPlat && currentPlat.type === 'moving';
-
-      // ★【個体差対応：届くようになったらもうすぐジャンプ！】
-      // 物理演算シミュレーション上で「今ジャンプすれば放物線軌道で100%次の土台(tx)に飛び移れる」と判定された瞬間、
-      // 土台の端へ行く前にその場から最速でジャンプを始動します。
-      // また、足場の端のギチギチの位置に到達した時は、膠着を防止するために強制ジャンプ。
-      const isAtEdge = currentPlat && (cpu.x < currentPlat.x + 15 || cpu.x + cpu.w > currentPlat.x + currentPlat.w - 15);
-      const canJumpOverRightNow = (isPhysicallyPossible && canReachHeight && visibleArrival) || isAtEdge;
-      
-      if (canJumpOverRightNow) {
-          cpu.jumpBuffer = CONFIG.JUMP_BUFFER;
-      }
-      
-      // ★【最重要：ブレーキ・自律停止の仕様を完全撤廃】
-      // ターゲットに向けて常に100%全速力（moveDir = 1 または -1）でキー出力を押し続け、固まりを完全に排除します。
+      // 目標方向へ全力移動(人間はためらわない)
       moveDir = hDiff > 0 ? 1 : -1;
 
-      // ★ 立っている土台が左右に動くやつ(moving)の時に、計算によりジャンプしても届かない場合：
-      // moveDir = 0 で完全停止するのではなく、同じプラットフォーム上で反対方向にゆっくり往復移動（助走スペースの確保）し、
-      // 常に左右どちらかへの移動状態（vxの保持）をキープします。
-      if (isCurrentMoving && !isPhysicallyPossible) {
-          const spaceLeft = cx - currentPlat.x;
-          const spaceRight = (currentPlat.x + currentPlat.w) - cx;
-          moveDir = spaceLeft > spaceRight ? -1 : 1; 
+      // 消え物足場は「着地する瞬間に実体があるか」を予測
+      let visibleArrival = true;
+      if (target.type === 'vanishing') {
+        const cycle = (frameCount + tFly + target.moveOffset * 10) % 120;
+        visibleArrival = cycle < 55;
+      } else if (target.type === 'toggle') {
+        const cycle = (frameCount + tFly + target.moveOffset * 12) % 180;
+        visibleArrival = cycle < 100;
       }
 
-      // ★【水色のコンベアのところでは左右に動き時もジャンプを加えることで動きやすくする】
-      if (cpu.currentPlatformType === 'conveyor' && moveDir !== 0 && frameCount % 25 === 0) {
-          cpu.jumpBuffer = CONFIG.JUMP_BUFFER;
+      // 踏切: 空中補正で届く横位置に入ったら、反応時間の経過後すぐ跳ぶ(人間の即断ジャンプ)
+      const withinLaunch = Math.abs(hDiff) < target.w / 2 + P.launchTolerance;
+      const canReachHeight = (cy - target.y) < (predictedJumpForce * predictedJumpForce) / (2 * gravity) + 12;
+      const isAtEdge = currentPlat && (cpu.x < currentPlat.x + 10 || cpu.x + cpu.w > currentPlat.x + currentPlat.w - 10);
+
+      if (reacted && ((withinLaunch && canReachHeight && visibleArrival) || isAtEdge)) {
+        cpu.jumpBuffer = CONFIG.JUMP_BUFFER;
       }
 
-      // 氷上でのスリップブレーキ (個体差の最高速度に連動)
-      if (cpu.currentPlatformType === 'ice' && Math.abs(hDiff) < 50 && Math.abs(cpu.vx) > 1.5) {
-          moveDir = -cpu.vx * 0.6; 
+      // 氷: 目標付近で滑り過ぎたら逆ブレーキ
+      if (cpu.currentPlatformType === 'ice' && Math.abs(hDiff) < 40 && Math.abs(cpu.vx) > 2) {
+        moveDir = -Math.sign(cpu.vx) * 0.6;
+      }
+      // コンベア: 流れに逆らう時は小刻みジャンプで進む
+      if (cpu.currentPlatformType === 'conveyor' && currentPlat &&
+          Math.sign(moveDir) !== Math.sign(currentPlat.dir) && frameCount % 22 === 0 && reacted) {
+        cpu.jumpBuffer = CONFIG.JUMP_BUFFER;
       }
     } else {
-      // 空中制御（ジャンプ中は左右入力を変えない、例外：現在ジャンプ系の土台から跳んでいる場合は空中制御再適用）
-      if (isOnJumpGimmick) {
-          moveDir = hDiff > 0 ? 1 : -1;
-      } else {
-          // 通常の空中は踏み切った瞬間の横移動出力方向を100%固定して一切ブレずに突入
-          moveDir = hDiff > 0 ? 1 : -1;
-      }
+      // 走り落ちた直後はコヨーテ時間内に即ジャンプでリカバー(人間のエッジジャンプ)
+      if (cpu.coyoteTimer > 0 && cpu.vy > 0 && reacted) cpu.jumpBuffer = CONFIG.JUMP_BUFFER;
+
+      // ── 空中ステアリング: 予測着地点へ向けて連続的に軌道補正(人間のエアコントロール) ──
+      const err = tx - (cx + cpu.vx * 5);
+      moveDir = Math.max(-1, Math.min(1, err / 36)) * P.steerPrecision;
+      moveDir += (Math.random() - 0.5) * P.steerNoise * 0.3;
     }
+  } else if (cpu.isGrounded && currentPlat) {
+    // ターゲットなし: 足場中央へ寄って次の再選択に備える
+    const centerDiff = (currentPlat.x + currentPlat.w / 2) - cx;
+    moveDir = Math.abs(centerDiff) > 10 ? Math.sign(centerDiff) : 0;
   }
 
+  // ── 物理 (プレイヤーと同一ルール) ──
   const friction = cpu.currentPlatformType === 'ice' ? CONFIG.ICE_FRICTION : CONFIG.MOVE_FRICTION;
-  // 空中での加速力計算時にも個々の accel 値を使用
   const accel = cpu.isGrounded ? cpu.aiBase.accel : cpu.aiBase.accel * CONFIG.AIR_CONTROL;
-  
+
   cpu.vx += moveDir * accel;
   cpu.vx = Math.max(-cpu.aiBase.maxSpeed, Math.min(cpu.aiBase.maxSpeed, cpu.vx));
   cpu.vx *= friction;
   cpu.vy += gravity;
 
-  // ★【足場端補正：CPUの速度を潰さないように押し戻しだけを行う】
-  if (cpu.isGrounded && currentPlat) {
-      const edgeLeft = currentPlat.x + 4;
-      const edgeRight = currentPlat.x + currentPlat.w - 4;
-      if (cpu.x < edgeLeft) { 
-          cpu.x = edgeLeft; 
-          cpu.vx = Math.abs(cpu.vx) * 0.5; // 速度を0にせず、逆方向への微小なリバウンド推進力に変換
-      } else if (cpu.x + cpu.w > edgeRight) { 
-          cpu.x = edgeRight - cpu.w; 
-          cpu.vx = -Math.abs(cpu.vx) * 0.5; // 速度を0にせず、逆方向への微小なリバウンド推進力に変換
-      }
-  }
-  
   if (cpu.isGrounded) cpu.coyoteTimer = CONFIG.COYOTE_TIME; else cpu.coyoteTimer--;
   if (cpu.jumpBuffer > 0 && cpu.coyoteTimer > 0) {
     cpu.vy = predictedJumpForce * cpu.gravityFactor;
