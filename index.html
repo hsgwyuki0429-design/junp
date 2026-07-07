@@ -6,116 +6,181 @@
 <title>Aether Reach 2D Gimmick Mastery</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
+:root {
+  --accent: #4287f5;
+  --glass-bg: rgba(10, 12, 28, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.14);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
   margin: 0;
   overflow: hidden;
   background: #050510;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
   touch-action: none;
+  color: white;
 }
 canvas { display: block; }
 .overlay-ui {
   position: absolute; inset: 0; pointer-events: none;
-  display: flex; flex-direction: column; padding: 20px; color: white;
+  display: flex; flex-direction: column; padding: 16px; color: white;
 }
 .glass {
-  background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
+  background: var(--glass-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border); border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.35);
 }
+
+/* ===== MENU ===== */
 #menu {
-  position: absolute; inset: 0; background: rgba(5, 5, 16, 0.95);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(66,135,245,0.18), transparent 45%),
+    radial-gradient(circle at 85% 90%, rgba(192,132,252,0.16), transparent 45%),
+    rgba(5, 5, 16, 0.96);
+  display: flex; flex-direction: column; align-items: center;
   z-index: 100; pointer-events: auto;
+  overflow-y: auto; padding: 32px 16px;
 }
+#menu::-webkit-scrollbar { width: 0; }
+.menu-inner {
+  width: 100%; max-width: 340px; margin: auto;
+  display: flex; flex-direction: column; align-items: center;
+}
+.title-glow {
+  background: linear-gradient(90deg, #6ea8ff, #c084fc, #ff9dd6);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 18px rgba(120,150,255,0.5));
+  animation: hue-cycle 8s linear infinite;
+}
+@keyframes hue-cycle { to { filter: hue-rotate(360deg) drop-shadow(0 0 18px rgba(120,150,255,0.5)); } }
+
 .btn-mode {
-  width: 280px; padding: 20px; margin: 10px; font-weight: 800;
-  text-align: center; cursor: pointer; transition: all 0.2s;
-  border: 2px solid rgba(255,255,255,0.2); border-radius: 12px;
+  width: 100%; padding: 16px 18px; margin: 7px 0; font-weight: 800;
+  text-align: center; cursor: pointer; transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+  border: 2px solid rgba(255,255,255,0.16); border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
 }
-.btn-mode:hover { background: rgba(255,255,255,0.1); border-color: white; transform: translateY(-2px); }
+.btn-mode:hover, .btn-mode:active { background: rgba(255,255,255,0.12); transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.4); }
+.btn-mode .m-emoji { font-size: 22px; line-height: 1; }
 .btn-setting {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 10px 20px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.3);
-  margin-top: 10px; cursor: pointer; font-size: 12px; font-weight: bold;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 11px 22px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.24);
+  margin-top: 10px; cursor: pointer; font-size: 13px; font-weight: bold; text-align: center;
+  transition: background 0.2s; width: 100%;
 }
+.btn-setting:hover { background: rgba(255,255,255,0.16); }
+.section-card {
+  width: 100%; margin-top: 14px; background: rgba(255,255,255,0.04);
+  padding: 14px 16px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.1);
+}
+.section-label { font-size: 10px; opacity: 0.6; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 10px; text-align: center; }
 .color-btn {
-  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
   border: 2px solid rgba(255,255,255,0.3); transition: all 0.2s;
 }
-.color-btn:hover { transform: scale(1.2); }
-.color-btn.selected { border-color: white; box-shadow: 0 0 10px rgba(255,255,255,0.8); transform: scale(1.1); }
+.color-btn:hover { transform: scale(1.18); }
+.color-btn.selected { border-color: white; box-shadow: 0 0 12px rgba(255,255,255,0.9); transform: scale(1.15); }
+
+/* ===== MOBILE CONTROLS ===== */
 #mobile-btns {
-  position: absolute; bottom: 40px; width: 100%; display: flex;
-  justify-content: space-between; padding: 0 30px; pointer-events: none;
+  position: absolute; bottom: 34px; width: 100%; display: flex;
+  justify-content: space-between; align-items: flex-end; padding: 0 26px; pointer-events: none;
 }
 .m-btn {
-  width: 70px; height: 70px; background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.2);
+  width: 68px; height: 68px; background: rgba(255,255,255,0.09);
+  backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.22);
   border-radius: 50%; pointer-events: auto; display: flex;
-  align-items: center; justify-content: center; font-weight: bold;
-  user-select: none;
+  align-items: center; justify-content: center; font-weight: bold; font-size: 22px;
+  user-select: none; transition: background 0.1s, transform 0.1s;
 }
+.m-btn:active { background: rgba(255,255,255,0.28); transform: scale(0.92); }
 #stick-container {
-  position: absolute; bottom: 50px; left: 50px;
-  width: 120px; height: 120px; background: rgba(255,255,255,0.1);
+  position: absolute; bottom: 44px; left: 40px;
+  width: 130px; height: 130px;
+  background: radial-gradient(circle, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+  border: 1px solid rgba(255,255,255,0.18);
   border-radius: 50%; display: none; pointer-events: auto;
 }
 #stick-knob {
   position: absolute; top: 50%; left: 50%;
-  width: 50px; height: 50px; background: rgba(255,255,255,0.4);
+  width: 56px; height: 56px;
+  background: radial-gradient(circle, rgba(255,255,255,0.6), rgba(255,255,255,0.25));
+  box-shadow: 0 0 16px rgba(120,150,255,0.6);
   border-radius: 50%; transform: translate(-50%, -50%);
 }
+
+/* ===== RESULT / CPU SELECT / TUTORIAL ===== */
 #result-screen {
-  position: absolute; inset: 0; background: rgba(0,0,0,0.6);
+  position: absolute; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(6px);
   display: none; flex-direction: column; align-items: center; justify-content: center;
-  z-index: 110; color: white; pointer-events: auto;
+  z-index: 110; color: white; pointer-events: auto; padding: 20px;
 }
+#result-screen .btn-mode { max-width: 300px; }
 #cpu-select {
-  position: absolute; inset: 0; background: rgba(5, 5, 16, 0.96);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  z-index: 105; pointer-events: auto; display: none;
+  position: absolute; inset: 0; background: rgba(5, 5, 16, 0.97);
+  flex-direction: column; align-items: center; justify-content: center;
+  z-index: 105; pointer-events: auto; display: none; padding: 20px;
 }
 .cpu-grid {
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px; width: min(420px, 90vw); margin-top: 18px;
+  gap: 10px; width: min(420px, 92vw); margin-top: 18px;
 }
 .cpu-level {
-  padding: 14px 0; border-radius: 12px; text-align: center; cursor: pointer;
+  padding: 16px 0; border-radius: 14px; text-align: center; cursor: pointer;
   border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08);
-  color: white; font-weight: 900;
+  color: white; font-weight: 900; transition: all 0.15s;
 }
-.cpu-level:hover { background: rgba(255,255,255,0.16); }
+.cpu-level:hover { background: rgba(120,150,255,0.28); transform: translateY(-2px); }
 .cpu-back {
-  margin-top: 18px; padding: 10px 18px; border-radius: 999px; cursor: pointer;
+  margin-top: 20px; padding: 11px 22px; border-radius: 999px; cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08);
-  color: white; font-size: 12px; font-weight: 800;
+  color: white; font-size: 13px; font-weight: 800;
 }
-.btn-rebuild {
-  position: absolute; top: 100px; left: 20px; pointer-events: auto;
-  background: rgba(255, 255, 255, 0.15); padding: 8px 16px;
-  border-radius: 8px; font-size: 10px; font-weight: 900;
-  color: white; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);
+.cpu-back:hover { background: rgba(255,255,255,0.16); }
+
+/* Tutorial */
+#tutorial {
+  position: absolute; inset: 0; background: rgba(5, 5, 16, 0.97);
+  z-index: 115; pointer-events: auto; display: none;
+  flex-direction: column; align-items: center; padding: 26px 16px; overflow-y: auto;
 }
-.btn-home {
-  position: absolute; top: 100px; left: 140px; pointer-events: auto;
-  background: rgba(255, 255, 255, 0.15); padding: 8px 16px;
-  border-radius: 8px; font-size: 10px; font-weight: 900;
-  color: white; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);
+#tutorial::-webkit-scrollbar { width: 0; }
+.tut-inner { width: 100%; max-width: 460px; }
+.tut-block {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  border-radius: 12px; background: rgba(255,255,255,0.05); margin-bottom: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
 }
+.tut-chip { width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0; box-shadow: 0 0 8px currentColor; }
+.tut-name { font-weight: 800; font-size: 14px; }
+.tut-desc { font-size: 12px; opacity: 0.72; line-height: 1.35; }
+
+/* ===== HUD BUTTONS ===== */
+.hud-btns { position: absolute; top: 92px; left: 16px; display: flex; gap: 8px; pointer-events: none; }
+.btn-hud {
+  pointer-events: auto; background: rgba(10,12,28,0.55); backdrop-filter: blur(10px);
+  padding: 9px 15px; border-radius: 12px; font-size: 11px; font-weight: 900;
+  color: white; cursor: pointer; border: 1px solid rgba(255,255,255,0.18);
+  transition: background 0.15s;
+}
+.btn-hud:hover, .btn-hud:active { background: rgba(255,255,255,0.18); }
 #explore-home {
-  position: absolute; top: 20px; left: 20px; pointer-events: auto;
+  position: absolute; top: 16px; left: 16px; pointer-events: auto;
   z-index: 200; display: none;
 }
 .warning-poison {
-  position: absolute; bottom: 20px; width: 100%; text-align: center;
-  color: #ef4444; font-weight: 900; font-size: 14px; animation: pulse 1s infinite;
-  display: none; pointer-events: none;
+  position: absolute; bottom: 18px; width: 100%; text-align: center;
+  color: #f472b6; font-weight: 900; font-size: 14px; animation: pulse 1s infinite;
+  display: none; pointer-events: none; text-shadow: 0 0 12px rgba(244,114,182,0.8);
 }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
 #achievement-popup {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(2);
+  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(2);
   opacity: 0; pointer-events: none; z-index: 200;
-  font-size: 15vw; font-weight: 900; font-style: italic; text-transform: uppercase;
+  font-size: 14vw; font-weight: 900; font-style: italic; text-transform: uppercase;
   color: #000;
   -webkit-text-stroke: 2px rgba(255,255,255,0.8);
   text-shadow: 10px 10px 0 rgba(0,0,0,0.5), -2px 2px 0 rgba(255,255,255,0.2);
@@ -123,7 +188,7 @@ canvas { display: block; }
   white-space: nowrap;
   letter-spacing: -0.05em;
   background: rgba(0,0,0,0.4);
-  padding: 0 100px;
+  padding: 0 60px;
   mix-blend-mode: difference;
 }
 #achievement-popup.active {
@@ -131,12 +196,20 @@ canvas { display: block; }
   transform: translate(-50%, -50%) scale(1);
   letter-spacing: 0.1em;
 }
+/* Dopamine full-screen flash */
+#screen-flash {
+  position: absolute; inset: 0; z-index: 150; pointer-events: none;
+  opacity: 0; background: white; transition: opacity 0.5s ease-out;
+  mix-blend-mode: screen;
+}
+#screen-flash.active { opacity: 0.55; transition: opacity 0.05s; }
+
 .zoom-slider-container {
-  width: 280px; margin-top: 15px; background: rgba(255,255,255,0.05);
-  padding: 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+  width: 100%; margin-top: 12px; background: rgba(255,255,255,0.05);
+  padding: 14px 16px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.1);
 }
 input[type=range] {
-  width: 100%; cursor: pointer; accent-color: #4287f5;
+  width: 100%; cursor: pointer; accent-color: var(--accent);
 }
 .hidden { display: none; }
 </style>
@@ -144,36 +217,45 @@ input[type=range] {
 <body>
 
 <div id="menu">
-  <h1 class="text-4xl font-black mb-2 tracking-tighter italic text-white">AETHER REACH</h1>
-  <p class="text-yellow-400 font-bold mb-8 tracking-widest text-xs uppercase">Gimmick Mastery Humanoid CPU Focus</p>
-  
-  <div class="btn-mode" onclick="startGame('free')">
-    <div class="text-[10px] opacity-60 tracking-widest uppercase text-white">Exploration</div>
-    <div class="text-xl text-white">FREE RUN</div>
+ <div class="menu-inner">
+  <h1 class="text-4xl font-black mb-1 tracking-tighter italic title-glow">AETHER REACH</h1>
+  <p class="text-white/50 font-bold mb-6 tracking-[0.25em] text-[10px] uppercase">エーテルの果てへ登れ</p>
+
+  <div class="btn-mode" style="border-color: rgba(110,168,255,0.5)" onclick="startGame('free')">
+    <div class="m-emoji">🕊️</div>
+    <div class="text-lg">フリーラン</div>
+    <div class="text-[10px] opacity-55">自由に高みを目指す</div>
   </div>
-  
-  <div class="btn-mode border-purple-500 bg-purple-950/20" onclick="startGame('poison')">
-    <div class="text-[10px] opacity-60 tracking-widest uppercase text-purple-400">Survival</div>
-    <div class="text-xl text-white">POISON RUN</div>
+
+  <div class="btn-mode" style="border-color: rgba(192,132,252,0.6); background: rgba(88,28,135,0.18)" onclick="startGame('poison')">
+    <div class="m-emoji">☠️</div>
+    <div class="text-lg">ポイズンラン</div>
+    <div class="text-[10px] opacity-55">迫る毒から逃げ切れ</div>
   </div>
-  
-  <div class="btn-mode border-red-600 bg-red-950/20" onclick="startGame('hard')">
-    <div class="text-[10px] opacity-60 tracking-widest uppercase text-red-500">Extreme Expert</div>
-    <div class="text-xl text-white">HARD MODE</div>
+
+  <div class="btn-mode" style="border-color: rgba(239,68,68,0.6); background: rgba(127,29,29,0.18)" onclick="startGame('hard')">
+    <div class="m-emoji">🔥</div>
+    <div class="text-lg">ハードモード</div>
+    <div class="text-[10px] opacity-55">極限の修羅場に挑む</div>
   </div>
-  
-  <div class="btn-mode border-cyan-400 bg-cyan-950/20" onclick="openCpuSelect()">
-    <div class="text-[10px] opacity-60 tracking-widest uppercase text-cyan-300">CPU Battle</div>
-    <div class="text-xl text-cyan-200">ULTIMATE CPU RACE</div>
+
+  <div class="btn-mode" style="border-color: rgba(34,211,238,0.6); background: rgba(8,51,68,0.22)" onclick="openCpuSelect()">
+    <div class="m-emoji">🤖</div>
+    <div class="text-lg text-cyan-200">CPUバトル</div>
+    <div class="text-[10px] opacity-55">20体のAIと登頂レース</div>
   </div>
-  
-  <div class="btn-setting text-white" onclick="toggleControls()">
-    CONTROLS: <span id="control-label">BUTTONS</span>
+
+  <div class="btn-setting" style="border-color: rgba(250,204,21,0.5); background: rgba(120,90,10,0.18)" onclick="openTutorial()">
+    📖 遊び方・チュートリアル
   </div>
-  
-  <div class="flex flex-col items-center mt-4">
-    <div class="text-[10px] opacity-60 tracking-widest uppercase text-white mb-2">PLAYER COLOR</div>
-    <div class="flex gap-3">
+
+  <div class="btn-setting" onclick="toggleControls()">
+    操作方法: <span id="control-label">スティック</span>
+  </div>
+
+  <div class="section-card">
+    <div class="section-label">プレイヤーカラー</div>
+    <div class="flex gap-3 justify-center">
       <div class="color-btn selected" style="background: #4287f5" onclick="setPlayerColor(this, '#4287f5')"></div>
       <div class="color-btn" style="background: #f87171" onclick="setPlayerColor(this, '#f87171')"></div>
       <div class="color-btn" style="background: #4ade80" onclick="setPlayerColor(this, '#4ade80')"></div>
@@ -182,20 +264,44 @@ input[type=range] {
       <div class="color-btn" style="background: #ffffff" onclick="setPlayerColor(this, '#ffffff')"></div>
     </div>
   </div>
-  
+
   <div class="zoom-slider-container">
     <div class="flex justify-between text-[10px] text-white/60 mb-2 uppercase tracking-widest font-bold">
-      <span>Zoom Out Level</span>
-      <span id="zoom-value-label">NORMAL</span>
+      <span>視野の広さ</span>
+      <span id="zoom-value-label">最大</span>
     </div>
-    <input type="range" id="zoom-slider" min="0.5" max="1.0" step="0.05" value="1.0" oninput="updateZoomFromSlider(this.value)">
+    <input type="range" id="zoom-slider" min="0.5" max="1.0" step="0.05" value="0.5" oninput="updateZoomFromSlider(this.value)">
   </div>
-  <p class="mt-8 opacity-40 text-sm text-white">A/D: Move Space: Jump</p>
+  <p class="mt-6 opacity-40 text-xs text-center">A / D または スティックで移動・スペースでジャンプ</p>
+ </div>
+</div>
+
+<div id="tutorial">
+ <div class="tut-inner">
+  <h2 class="text-2xl font-black italic tracking-tighter text-center mb-1 title-glow">遊び方</h2>
+  <p class="text-center text-white/50 text-xs mb-5">足場の色 = 能力。特徴を覚えて頂上を目指そう！</p>
+
+  <div class="tut-block" style="color:#6ea8ff"><div class="tut-chip" style="background:#4287f5"></div><div><div class="tut-name text-white">操作</div><div class="tut-desc">左右で移動、スペース／JUMPでジャンプ。ジャンプ直後の猶予があるので端ギリギリでも跳べる。</div></div></div>
+  <h3 class="text-xs uppercase tracking-widest opacity-50 mt-4 mb-2">足場の色と能力</h3>
+  <div class="tut-block" style="color:#4287f5"><div class="tut-chip" style="background:#4287f5"></div><div><div class="tut-name">青 / ノーマル</div><div class="tut-desc">普通の足場。安全に着地できる基本ブロック。</div></div></div>
+  <div class="tut-block" style="color:#4ade80"><div class="tut-chip" style="background:#4ade80"></div><div><div class="tut-name">緑 / ムービング</div><div class="tut-desc">左右にゆっくり動く。乗ると一緒に運ばれる。</div></div></div>
+  <div class="tut-block" style="color:#f87171"><div class="tut-chip" style="background:#f87171"></div><div><div class="tut-name">赤 / バニッシュ</div><div class="tut-desc">一定周期で点滅して消える。消える前に飛び移ろう。</div></div></div>
+  <div class="tut-block" style="color:#fbbf24"><div class="tut-chip" style="background:#fbbf24"></div><div><div class="tut-name">黄 / ブースター</div><div class="tut-desc">乗った瞬間に大ジャンプ！一気に上へ飛べる。</div></div></div>
+  <div class="tut-block" style="color:#a78bfa"><div class="tut-chip" style="background:#a78bfa"></div><div><div class="tut-name">紫 / クランブル</div><div class="tut-desc">乗ると崩れ落ちる。素早く次へ渡ろう（時間で復活）。</div></div></div>
+  <div class="tut-block" style="color:#38bdf8"><div class="tut-chip" style="background:#38bdf8"></div><div><div class="tut-name">水色 / コンベア</div><div class="tut-desc">ベルトのように片方向へ流される。矢印が向き。</div></div></div>
+  <div class="tut-block" style="color:#e0f2fe"><div class="tut-chip" style="background:#e0f2fe"></div><div><div class="tut-name">氷 / アイス</div><div class="tut-desc">ツルツル滑って止まりにくい。慣性に注意。</div></div></div>
+  <div class="tut-block" style="color:#22c55e"><div class="tut-chip" style="background:#22c55e"></div><div><div class="tut-name">黄緑 / スライム</div><div class="tut-desc">ポヨンと弾む。ブースターより控えめな連続ジャンプ。</div></div></div>
+  <div class="tut-block" style="color:#f472b6"><div class="tut-chip" style="background:#f472b6"></div><div><div class="tut-name">ピンク / トグル</div><div class="tut-desc">周期で実体化⇔すり抜けを切替。光っている時だけ乗れる。</div></div></div>
+  <div class="tut-block" style="color:#7dd3fc"><div class="tut-chip" style="background:#7dd3fc"></div><div><div class="tut-name">空色 / ウィンド</div><div class="tut-desc">上空に上昇気流。上を通ると押し上げられ滞空できる。</div></div></div>
+  <div class="tut-block" style="color:#ef4444"><div class="tut-chip" style="background:#ef4444"></div><div><div class="tut-name">赤発光 / 重力異常 (ハード)</div><div class="tut-desc">乗ると重力が弱まりフワッと浮く。ハードモード限定。</div></div></div>
+
+  <div class="cpu-back" style="width:100%; text-align:center; margin-top:22px;" onclick="closeTutorial()">閉じる</div>
+ </div>
 </div>
 
 <div id="cpu-select">
-  <h2 class="text-3xl font-black tracking-tighter italic text-cyan-300">ULTIMATE CPU RACE</h2>
-  <p class="mt-2 text-xs uppercase tracking-[0.3em] text-white/50">CPU個性ランク: 1 - 10 (Physics Engine Logic)</p>
+  <h2 class="text-3xl font-black tracking-tighter italic text-cyan-300">CPUバトル</h2>
+  <p class="mt-2 text-xs tracking-[0.2em] text-white/50">難易度を選択 (Lv.1 やさしい 〜 Lv.10 最強AI)</p>
   <div class="cpu-grid">
     <div class="cpu-level" onclick="startCpuRace(1)">1</div>
     <div class="cpu-level" onclick="startCpuRace(2)">2</div>
@@ -208,51 +314,54 @@ input[type=range] {
     <div class="cpu-level" onclick="startCpuRace(9)">9</div>
     <div class="cpu-level" onclick="startCpuRace(10)">10</div>
   </div>
-  <div class="cpu-back" onclick="closeCpuSelect()">BACK</div>
+  <div class="cpu-back" onclick="closeCpuSelect()">もどる</div>
 </div>
 
 <div id="result-screen">
-  <h2 class="text-2xl font-bold mb-2 uppercase tracking-tighter">RESULT</h2>
-  <div id="final-alt-text" class="text-6xl font-black text-purple-500 mb-8 italic">0m</div>
-  <div class="btn-mode bg-white/10" onclick="closeResult()">BACK TO MENU</div>
-  <div class="btn-mode border-cyan-400 bg-cyan-950/40" onclick="startExploring()">EXPLORE WORLD</div>
+  <h2 class="text-2xl font-bold mb-2 tracking-tighter">リザルト</h2>
+  <div id="final-alt-text" class="text-6xl font-black text-purple-400 mb-8 italic">0m</div>
+  <div class="btn-mode" style="max-width:300px; background: rgba(255,255,255,0.08)" onclick="closeResult()">メニューへ戻る</div>
+  <div class="btn-mode" style="max-width:300px; border-color: rgba(34,211,238,0.6); background: rgba(8,51,68,0.3)" onclick="startExploring()">ワールドを探索する</div>
 </div>
 
 <div id="explore-home">
-  <div class="btn-mode !w-[120px] !p-3 !bg-black/50" onclick="goHome()">HOME</div>
+  <div class="btn-hud" onclick="goHome()">🏠 ホーム</div>
 </div>
 
 <div id="achievement-popup">GREAT!</div>
+<div id="screen-flash"></div>
 
 <div class="overlay-ui">
-  <div class="flex justify-between items-start">
+  <div class="flex justify-between items-start gap-3">
     <div class="glass p-4 min-w-[120px]">
       <div id="mode-label" class="text-[10px] opacity-50 uppercase tracking-widest">FREE RUN</div>
       <div id="alt-val" class="text-3xl font-black italic">0m</div>
     </div>
     <div class="glass p-4 text-right">
-      <div class="text-[10px] opacity-50 uppercase tracking-widest">Personal Best</div>
+      <div class="text-[10px] opacity-50 tracking-widest">ベスト記録</div>
       <div id="best-val" class="text-xl font-bold">0m</div>
     </div>
   </div>
-  
+
   <div id="cpu-hud" class="glass p-4 mt-3 hidden">
-    <div class="text-[10px] opacity-50 uppercase tracking-widest">CPU ALIVE</div>
+    <div class="text-[10px] opacity-50 tracking-widest">CPU 生存数</div>
     <div id="cpu-status" class="text-xl font-bold">--</div>
   </div>
-  
-  <div class="btn-rebuild" onclick="rebuildLevel()">REBUILD STAGE</div>
-  <div class="btn-home" onclick="goHome()">HOME</div>
-  <div id="poison-warning" class="warning-poison uppercase tracking-[0.2em]">Poison is rising!</div>
+
+  <div class="hud-btns">
+    <div class="btn-hud" onclick="rebuildLevel()">🔄 作り直す</div>
+    <div class="btn-hud" onclick="goHome()">🏠 ホーム</div>
+  </div>
+  <div id="poison-warning" class="warning-poison tracking-[0.2em]">☠️ 毒が迫っている！</div>
 </div>
 
 <div id="mobile-btns" class="md:hidden">
   <div id="btn-group-move" class="flex gap-4">
-    <div id="m-left" class="m-btn text-white"><</div>
-    <div id="m-right" class="m-btn text-white">></div>
+    <div id="m-left" class="m-btn text-white">◀</div>
+    <div id="m-right" class="m-btn text-white">▶</div>
   </div>
   <div id="stick-container"><div id="stick-knob"></div></div>
-  <div id="m-jump" class="m-btn text-white" style="background: rgba(66, 135, 245, 0.4); width: 100px; border-radius: 20px; margin-left: auto;">JUMP</div>
+  <div id="m-jump" class="m-btn text-white" style="background: rgba(66, 135, 245, 0.42); width: 104px; border-radius: 22px; margin-left: auto; font-size: 15px;">JUMP</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -330,8 +439,8 @@ const CONFIG = {
 };
 
 let gameMode = 'free';
-let controlType = 'buttons';
-let zoomBaseValue = 1.0;
+let controlType = 'stick';
+let zoomBaseValue = 0.5;
 let isRunning = false;
 let isExploring = false;
 let cpuModeLevel = 1;
@@ -350,7 +459,7 @@ let player = {
   gravityFactor: 1.0
 };
 
-let camera = { x: 1000, y: 0, zoom: 1 };
+let camera = { x: 1000, y: 0, zoom: 0.5 };
 let platforms = [];
 let particles = [];
 let poisonY = 1000;
@@ -364,27 +473,30 @@ let stickState = { active: false, identifier: null, startX: 0, startY: 0, moveX:
 let exploreInput = { active: false, lastX: 0, lastY: 0 };
 
 let bgBubbles = [];
-for (let i = 0; i < 40; i++) {
+for (let i = 0; i < 60; i++) {
   bgBubbles.push({
     x: Math.random() * 2000,
     y: Math.random() * 2000,
-    r: 10 + Math.random() * 40,
-    speed: 0.2 + Math.random() * 0.8,
-    opacity: 0.1 + Math.random() * 0.2
+    r: 8 + Math.random() * 46,
+    speed: 0.2 + Math.random() * 1.0,
+    opacity: 0.08 + Math.random() * 0.22
   });
 }
 
 function updateZoomFromSlider(val) {
   zoomBaseValue = parseFloat(val);
   const label = document.getElementById('zoom-value-label');
-  if (zoomBaseValue > 0.9) label.innerText = "NORMAL";
-  else if (zoomBaseValue > 0.7) label.innerText = "WIDE";
-  else label.innerText = "ULTRA WIDE";
+  if (zoomBaseValue > 0.9) label.innerText = "標準";
+  else if (zoomBaseValue > 0.7) label.innerText = "広い";
+  else label.innerText = "最大";
 }
+
+function openTutorial() { document.getElementById('tutorial').style.display = 'flex'; }
+function closeTutorial() { document.getElementById('tutorial').style.display = 'none'; }
 
 function toggleControls() {
   controlType = controlType === 'buttons' ? 'stick' : 'buttons';
-  document.getElementById('control-label').innerText = controlType.toUpperCase();
+  document.getElementById('control-label').innerText = controlType === 'stick' ? 'スティック' : 'ボタン';
   updateControlUI();
 }
 
@@ -398,6 +510,17 @@ function updateControlUI() {
     btnGroup.style.display = 'none';
     stickCont.style.display = 'block';
   }
+}
+
+function saveBestScore() {
+  try { localStorage.setItem('aether_best_' + gameMode, String(bestScore)); } catch(e) {}
+  const el = document.getElementById('best-val'); if (el) el.innerText = bestScore + "m";
+}
+function loadBestScore() {
+  let v = 0;
+  try { v = parseInt(localStorage.getItem('aether_best_' + gameMode)) || 0; } catch(e) {}
+  bestScore = v;
+  const el = document.getElementById('best-val'); if (el) el.innerText = bestScore + "m";
 }
 
 function setPlayerColor(elem, color) {
@@ -449,14 +572,13 @@ function initLevel(isRebuild = false) {
       else if (rand < 0.48) type = 'ice';
       else if (rand < 0.56) type = 'toggle';
       else if (rand < 0.64) type = 'slime';
-      else if (rand < 0.72) type = 'wind';
-      else if (rand < 0.78) type = 'teleporter';
-      else if (rand < 0.85 && gameMode === 'hard') type = 'gravity_anomaly';
+      else if (rand < 0.74) type = 'wind';
+      else if (rand < 0.82 && gameMode === 'hard') type = 'gravity_anomaly';
       else type = 'normal';
     }
 
     if (isRebuild && i === 1) type = 'normal';
-    let width = (type === 'booster' || type === 'teleporter') ? 50 : Math.max(60, 150 - (i * 0.05));
+    let width = (type === 'booster') ? 50 : Math.max(60, 150 - (i * 0.05));
     if (gameMode === 'hard') width *= 0.65;
     
     const p = { 
@@ -502,9 +624,8 @@ function getPlatformColor(type, i) {
     case 'ice': return '#e0f2fe';
     case 'toggle': return '#f472b6';
     case 'slime': return '#22c55e';
-    case 'wind': return 'rgba(255,255,255,0.2)';
+    case 'wind': return '#7dd3fc';
     case 'gravity_anomaly': return '#ef4444';
-    case 'teleporter': return '#c084fc';
     default: return `hsl(${(210 + i * 1.5) % 360}, 60%, 55%)`;
   }
 }
@@ -536,6 +657,7 @@ function startGame(mode, cpuLevel = 1) {
   document.querySelector('.overlay-ui').style.display = 'flex';
   
   isRunning = true;
+  loadBestScore();
   updateControlUI();
   resetPlayer();
   initLevel();
@@ -586,6 +708,30 @@ function triggerAchievement(text) {
   setTimeout(() => el.classList.remove('active'), 2000);
 }
 
+// ドーパミン演出: 画面全体のフラッシュ
+function triggerFlash(color) {
+  const el = document.getElementById('screen-flash');
+  el.style.background = color || 'white';
+  el.classList.add('active');
+  setTimeout(() => el.classList.remove('active'), 60);
+}
+
+// ドーパミン演出: 中央からの派手なコンフェッティ爆発
+function confettiBurst(cx, cy) {
+  const cols = ['#ff5edb', '#ffd93d', '#6ea8ff', '#4ade80', '#c084fc', '#ff9d4d', '#22d3ee'];
+  for (let i = 0; i < 60; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = 4 + Math.random() * 12;
+    particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd - 3,
+      life: 1.0, decay: 0.01 + Math.random() * 0.015,
+      color: cols[(Math.random() * cols.length) | 0]
+    });
+  }
+}
+
 // ========================================
 // CPU AI REBUILD - GLOBAL GIMMICK MASTER EDITION
 // ========================================
@@ -621,7 +767,6 @@ function initCpuRace() {
       aggressionLevel: 0.2 + (level * 0.08),                       // 高いほど長距離ジャンプに挑戦
       jumpPrecision: 0.5 + (level * 0.05),                         // ジャンプタイミングと補正の正確さ
       boosterAffinity: level >= 7,                                 // 7以上でギミック足場を能動的ターゲットに
-      teleporterAffinity: level >= 9,                              // 9以上でワープゾーンを能動的に狙う
     };
     
     const startX = 820 + i * 16 + (Math.random() - 0.5) * 40;
@@ -662,33 +807,6 @@ function initCpuRace() {
       }
     });
   }
-}
-
-function findSafeTeleportTarget(currentY) {
-  // 紫テレポートからの転送先における「詰み（落下デス・足場なしでのスタック）」を完全回避。
-  // 以下の条件を100%満足する安全な土台のみをフィルタリングして上位候補を返す：
-  // 1. 一時的に消滅する足場（vanishing/crumbling）はワープ直後の落下詰みを作るため除外
-  // 2. Y座標がテレポート高度より200px以上高い位置に存在するアクティブな通常土台（normal）
-  // 3. 次の飛び移り先が物理的に存在しない孤島状態を避けるため、ある程度の幅（w >= 80）を保持している
-  const candidates = platforms
-    .filter(p => {
-      return p.y < currentY - 200 && 
-             p.state === 'active' && 
-             p.type !== 'teleporter' &&
-             p.type !== 'vanishing' &&
-             p.type !== 'crumbling' &&
-             p.w >= 80;
-    })
-    .sort((a, b) => b.y - a.y); // 高度順（直近）にソート
-
-  if (candidates.length > 0) {
-    return candidates[Math.min(candidates.length - 1, 4)];
-  }
-  
-  const fallback = platforms
-    .filter(p => p.y < currentY - 200 && p.state === 'active' && p.type !== 'teleporter')
-    .sort((a, b) => b.y - a.y);
-  return fallback.length > 0 ? fallback[0] : null;
 }
 
 // ---------------------------------------------------------
@@ -918,13 +1036,14 @@ function stepCpu(cpu) {
   platforms.forEach(p => {
     if (p.state === 'dead' || p.state === 'invisible') return;
     if (Math.abs(p.y - cpu.y) > 400) return;
+    // 空色ウィンド: 足場の上空にいるとき上昇気流で押し上げる
+    if (p.type === 'wind') {
+      const inX = cpu.x + cpu.w > p.x - 10 && cpu.x < p.x + p.w + 10;
+      const above = cpu.y + cpu.h <= p.y && cpu.y + cpu.h > p.y - 300;
+      if (inX && above) { cpu.vy -= 1.1; if (cpu.vy < -7) cpu.vy = -7; }
+    }
     const isOverlappingX = cpu.x + cpu.w > p.x && cpu.x < p.x + p.w;
     if (cpu.vy >= 0 && isOverlappingX && cpu.y + cpu.h >= p.y && cpu.y + cpu.h <= p.y + p.h + cpu.vy) {
-      if (p.type === 'teleporter') {
-        const targetP = findSafeTeleportTarget(cpu.y);
-        if (targetP) { cpu.x = targetP.x + targetP.w / 2 - cpu.w / 2; cpu.y = targetP.y - cpu.h - 50; cpu.vy = -5; cpu.memory.lockedTarget = null; }
-        return;
-      }
       if (p.type === 'booster') { cpu.vy = -35; return; }
       if (p.type === 'slime') { cpu.vy = -28; return; }
       if (p.type === 'conveyor') cpu.vx += p.dir * 0.9;
@@ -961,19 +1080,22 @@ function eliminateSlowestCpu() {
   triggerAchievement(`OUT!`);
 }
 
-function updateCpuRace() {
-  if (!cpuRace.active) return;
-  
-  // 各自の物理的な足場挙動位置の動的更新（毎フレーム必ず1回だけ実行）
+// ギミック足場の状態更新（全モード共通で毎フレーム実行）
+function updatePlatforms() {
+  const dropStanding = (p) => {
+    if (player.isGrounded && player.y + player.h === p.y && player.x + player.w > p.x && player.x < p.x + p.w) player.isGrounded = false;
+    cpuRacers.forEach(r => {
+      if (r.alive && r.isGrounded && r.y + r.h === p.y && r.x + r.w > p.x && r.x < p.x + p.w) r.isGrounded = false;
+    });
+  };
   platforms.forEach(p => {
     let oldX = p.x;
     if (p.type === 'moving') {
       p.x = p.startX + Math.sin(frameCount * 0.02 + p.moveOffset) * 200;
-      // プレイヤーが動く土台の上で引きずられる仕様
+      // 動く土台の上に乗っている者を一緒に引きずる
       if (player.isGrounded && player.y + player.h === p.y && player.x + player.w > p.x && player.x < p.x + p.w) {
         player.x += (p.x - oldX);
       }
-      // 生存しているCPUを動く足場と滑らかに同期引きずり移動
       cpuRacers.forEach(r => {
         if (r.alive && r.isGrounded && r.y + r.h === p.y && r.x + r.w > p.x && r.x < p.x + p.w) {
           r.x += (p.x - oldX);
@@ -984,35 +1106,32 @@ function updateCpuRace() {
       const period = 120;
       const cycle = (frameCount + p.moveOffset * 10) % period;
       if (cycle < 60) p.state = 'active';
-      else {
-        p.state = 'invisible';
-        if (player.isGrounded && player.y + player.h === p.y && player.x + player.w > p.x && player.x < p.x + p.w) player.isGrounded = false;
-        // ターゲット消滅時に接地CPUの接地判定を解除
-        cpuRacers.forEach(r => {
-          if (r.alive && r.isGrounded && r.y + r.h === p.y && r.x + r.w > p.x && r.x < p.x + p.w) r.isGrounded = false;
-        });
-      }
+      else { p.state = 'invisible'; dropStanding(p); }
+    }
+    // ピンク・トグル: 一定周期で実体化⇔すり抜けを切り替え（ONの方が長く、点滅で予告）
+    if (p.type === 'toggle') {
+      const period = 180;
+      const cycle = (frameCount + p.moveOffset * 12) % period;
+      if (cycle < 110) p.state = 'active';
+      else { p.state = 'invisible'; dropStanding(p); }
     }
     if (p.type === 'crumbling') {
       if (p.isTouched && p.state === 'active') {
         p.life -= 0.025;
-        if (p.life <= 0) {
-          p.state = 'dead'; p.respawnTimer = 180;
-          if (player.isGrounded && player.y + player.h === p.y && player.x + player.w > p.x && player.x < p.x + p.w) player.isGrounded = false;
-          cpuRacers.forEach(r => {
-            if (r.alive && r.isGrounded && r.y + r.h === p.y && r.x + r.w > p.x && r.x < p.x + p.w) r.isGrounded = false;
-          });
-        }
+        if (p.life <= 0) { p.state = 'dead'; p.respawnTimer = 180; dropStanding(p); }
       } else if (p.state === 'dead') {
         p.respawnTimer--;
         if (p.respawnTimer <= 0) {
           p.state = 'active'; p.life = 1.0; p.isTouched = false;
-          createParticle(player.x + player.w/2, player.y + player.h/2, p.color, 10);
+          createParticle(p.x + p.w/2, p.y, p.color, 10);
         }
       }
     }
   });
+}
 
+function updateCpuRace() {
+  if (!cpuRace.active) return;
   for (const cpu of cpuRacers) stepCpu(cpu);
   if (score >= cpuRace.nextCheckpoint && cpuRace.cleared < cpuRace.total - 1) {
     cpuRace.nextCheckpoint += cpuRace.checkpointStep;
@@ -1028,6 +1147,7 @@ function update() {
   if (isExploring) return;
   if (!isRunning) return;
   frameCount++;
+  updatePlatforms();
   let moveDir = 0;
   if (controlType === 'buttons') {
     if (keys['KeyA'] || keys['ArrowLeft']) moveDir -= 1;
@@ -1067,21 +1187,18 @@ function update() {
   platforms.forEach(p => {
     if (p.state === 'dead' || p.state === 'invisible') return;
     if (Math.abs(p.y - player.y) > 800) return;
+    // 空色ウィンド: 足場の上空で上昇気流に押し上げられる
+    if (p.type === 'wind') {
+      const inX = player.x + player.w > p.x - 10 && player.x < p.x + p.w + 10;
+      const above = player.y + player.h <= p.y && player.y + player.h > p.y - 300;
+      if (inX && above) {
+        player.vy -= 1.1; if (player.vy < -7) player.vy = -7;
+        if (frameCount % 3 === 0) createParticle(player.x + player.w/2, player.y + player.h, '#7dd3fc', 2);
+      }
+    }
     const isOverlappingX = player.x + player.w > p.x && player.x < p.x + p.w;
     if (player.vy >= 0 && isOverlappingX && player.y + player.h >= p.y && player.y + player.h <= p.y + p.h + player.vy) {
-      if (p.type === 'teleporter') {
-        const targetP = findSafeTeleportTarget(player.y);
-        if (targetP) {
-          playSound('teleport');
-          createParticle(player.x + player.w/2, player.y + player.h/2, p.color, 20);
-          player.x = targetP.x + targetP.w / 2 - player.w / 2;
-          player.y = targetP.y - player.h - 50;
-          player.vy = -4;
-          createParticle(player.x + player.w/2, player.y + player.h/2, p.color, 20);
-        }
-        return;
-      }
-      if (p.type === 'booster') { 
+      if (p.type === 'booster') {
         playSound('booster'); player.vy = -35; player.scaleX = 0.4; player.scaleY = 2.5; 
         createParticle(player.x + player.w/2, player.y, '#fbbf24', 15); return; 
       }
@@ -1113,12 +1230,19 @@ function update() {
   camera.x = (player.x + player.w / 2) - (canvas.width / 2);
   camera.y = (player.y + player.h / 2) - (canvas.height * 0.6);
   score = Math.floor(Math.max(0, (500 - player.y) / 10));
+  if (score > bestScore) { bestScore = score; saveBestScore(); }
+  // 高速移動中は残像トレイルを出す（ドーパミン演出）
+  if (Math.abs(player.vy) > 12 && frameCount % 2 === 0) {
+    createParticle(player.x + player.w/2, player.y + player.h/2, playerColor, 1);
+  }
   const milestone = Math.floor(score / 500) * 500;
   if (milestone > lastMilestone && milestone > 0) {
     lastMilestone = milestone;
     const msgs = ["GOOD!", "GREAT!", "AMAZING!", "UNBELIEVABLE!", "GODSPEED!", "LEGENDARY!", "AETHER REACH!"];
     const idx = Math.min(Math.floor(milestone / 500) - 1, msgs.length - 1);
     triggerAchievement(msgs[idx]);
+    triggerFlash('#ffffff');
+    confettiBurst(player.x + player.w/2, player.y);
   }
   if (gameMode === 'cpu') updateCpuRace();
   if (player.y > camera.y + canvas.height + 800) { 
@@ -1131,10 +1255,10 @@ function showResult(dist, win = false) {
   isRunning = false;
   const title = document.querySelector('#result-screen h2');
   if (gameMode === 'cpu') {
-    title.innerText = win ? 'VICTORY' : 'ELIMINATED';
-    document.getElementById('final-alt-text').innerText = win ? 'WINNER' : 'DEFEATED';
+    title.innerText = win ? '勝利！' : '敗退';
+    document.getElementById('final-alt-text').innerText = win ? 'WINNER' : 'DEFEAT';
   } else {
-    title.innerText = 'RESULT';
+    title.innerText = 'リザルト';
     document.getElementById('final-alt-text').innerText = dist + "m";
   }
   document.getElementById('result-screen').style.display = 'flex';
@@ -1149,15 +1273,21 @@ function resetPlayer() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   let topColor, botColor, accentColor;
+  let bubbleHue = (frameCount * 0.6) % 360;
   if (gameMode === 'hard') {
-    topColor = '#1a0505'; botColor = '#050000'; accentColor = "rgba(255,0,0,0.1)";
+    // ハードでも背景がゆっくり脈打つ（ドーパミン演出）
+    const pulse = 4 + Math.sin(frameCount * 0.05) * 4;
+    topColor = `hsl(${(0 + Math.sin(frameCount*0.01)*15)}, 70%, ${8 + pulse}%)`;
+    botColor = '#050000';
+    accentColor = `hsla(${(frameCount) % 360}, 90%, 55%, 0.12)`;
   } else {
-    const hue = (210 - score * 0.1) % 360;
-    const saturation = 70 + Math.sin(score * 0.01) * 20;
-    const lightness = 80 - Math.min(score * 0.005, 40);
+    // 時間とともに背景色が結構な頻度で変化し続ける（ドーパミン演出）
+    const hue = (210 - score * 0.1 - frameCount * 0.5) % 360;
+    const saturation = 78 + Math.sin(frameCount * 0.02) * 18;
+    const lightness = 72 - Math.min(score * 0.005, 38) + Math.sin(frameCount * 0.03) * 6;
     topColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-    botColor = `hsl(${(hue + 40) % 360}, ${saturation - 10}%, ${lightness - 20}%)`;
-    accentColor = `hsla(${hue}, 100%, 50%, 0.1)`;
+    botColor = `hsl(${(hue + 50) % 360}, ${saturation - 10}%, ${lightness - 24}%)`;
+    accentColor = `hsla(${hue}, 100%, 55%, 0.12)`;
   }
   const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
   bg.addColorStop(0, topColor); bg.addColorStop(1, botColor);
@@ -1170,9 +1300,11 @@ function draw() {
   for(let x = offsetX - gridSize; x < canvas.width + gridSize; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
   for(let y = offsetY - gridSize; y < canvas.height + gridSize; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
   ctx.stroke(); ctx.restore();
-  bgBubbles.forEach(b => {
+  bgBubbles.forEach((b, i) => {
     b.y -= b.speed; if(b.y < -100) { b.y = canvas.height + 100; b.x = Math.random() * canvas.width; }
-    ctx.fillStyle = accentColor; ctx.globalAlpha = b.opacity;
+    // 各バブルが虹色にゆっくり変化（ドーパミン演出）
+    ctx.fillStyle = `hsla(${(bubbleHue + i * 18) % 360}, 90%, 60%, 1)`;
+    ctx.globalAlpha = b.opacity;
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0;
   });
   ctx.save(); ctx.translate(canvas.width/2, canvas.height/2);
@@ -1188,18 +1320,58 @@ function draw() {
     const midY = (500 + player.y) / 2; ctx.translate(-camera.x, -midY + canvas.height/2);
   } else ctx.translate(-camera.x, -camera.y);
   platforms.forEach(p => {
-    if (p.state === 'dead' || p.state === 'invisible') return;
+    if (p.state === 'dead') return;
+    // トグルはOFF(invisible)でも半透明のゴーストを表示。他のinvisibleは非表示。
+    if (p.state === 'invisible' && p.type !== 'toggle') return;
     const drawMargin = 1000 / dynamicZoom;
-    if (p.x + p.w > camera.x - drawMargin && p.x < camera.x + canvas.width + drawMargin && 
+    if (p.x + p.w > camera.x - drawMargin && p.x < camera.x + canvas.width + drawMargin &&
         p.y + p.h > (isRunning ? camera.y : -10000) - drawMargin && p.y < (isRunning ? camera.y + canvas.height : 10000) + drawMargin) {
       let color = p.color; ctx.save();
-      if (p.type === 'vanishing') { ctx.globalAlpha = 0.8; ctx.setLineDash([5, 5]); ctx.strokeStyle = color; ctx.strokeRect(p.x, p.y, p.w, p.h); ctx.setLineDash([]); }
+
+      // 空色ウィンド: 上昇気流のオーラを描画
+      if (p.type === 'wind') {
+        const g = ctx.createLinearGradient(0, p.y - 260, 0, p.y);
+        g.addColorStop(0, 'rgba(125,211,252,0)'); g.addColorStop(1, 'rgba(125,211,252,0.22)');
+        ctx.fillStyle = g; ctx.fillRect(p.x, p.y - 260, p.w, 260);
+        // 上向きの気流ライン
+        ctx.strokeStyle = 'rgba(125,211,252,0.5)'; ctx.lineWidth = 2;
+        for (let k = 0; k < 3; k++) {
+          const lx = p.x + p.w * (0.25 + k * 0.25);
+          const ph = (frameCount * 2 + k * 40) % 220;
+          ctx.beginPath(); ctx.moveTo(lx, p.y - ph); ctx.lineTo(lx, p.y - ph - 26); ctx.stroke();
+        }
+      }
+
+      // トグル: OFF時はゴースト、ON時は残り時間で明滅
+      if (p.type === 'toggle') {
+        if (p.state === 'invisible') {
+          ctx.globalAlpha = 0.16; ctx.setLineDash([6, 6]); ctx.strokeStyle = color; ctx.lineWidth = 2;
+          ctx.strokeRect(p.x, p.y, p.w, p.h); ctx.setLineDash([]); ctx.restore(); return;
+        } else {
+          const cyc = (frameCount + p.moveOffset * 12) % 180;
+          if (cyc > 90) ctx.globalAlpha = 0.55 + Math.sin(frameCount * 0.6) * 0.35; // 消える予告に点滅
+          ctx.shadowBlur = 12; ctx.shadowColor = color;
+        }
+      }
+
+      if (p.type === 'vanishing') { ctx.globalAlpha = 0.85; ctx.setLineDash([5, 5]); ctx.strokeStyle = color; ctx.strokeRect(p.x, p.y, p.w, p.h); ctx.setLineDash([]); }
       if (p.type === 'crumbling') ctx.globalAlpha = p.life;
-      if (p.type === 'teleporter') { ctx.shadowBlur = 15; ctx.shadowColor = color; }
+      if (p.type === 'booster' || p.type === 'slime') { ctx.shadowBlur = 14; ctx.shadowColor = color; }
+      if (p.type === 'gravity_anomaly') { ctx.shadowBlur = 14; ctx.shadowColor = color; }
+
       ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.beginPath(); ctx.roundRect(p.x + 4, p.y + 4, p.w, p.h, 6); ctx.fill();
-      ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, p.h, 6); ctx.fill(); ctx.restore();
+      ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, p.h, 6); ctx.fill();
+
+      // コンベアの流れる向き矢印
+      if (p.type === 'conveyor') {
+        ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        const cyText = p.y + p.h/2 + 3;
+        ctx.font = 'bold 13px Arial'; ctx.textAlign = 'center';
+        ctx.fillText(p.dir > 0 ? '»»' : '««', p.x + p.w/2, cyText);
+      }
+      ctx.restore();
     }
-  }); 
+  });
   if (gameMode === 'cpu') {
     const checkpointY = 500 - cpuRace.nextCheckpoint * 10;
     ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)'; ctx.lineWidth = 4; ctx.setLineDash([10, 15]);
