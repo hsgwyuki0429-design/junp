@@ -1,1 +1,1287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Aether Reach 2D Gimmick Mastery</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #050510;
+  font-family: 'Inter', sans-serif;
+  touch-action: none;
+}
+canvas { display: block; }
+.overlay-ui {
+  position: absolute; inset: 0; pointer-events: none;
+  display: flex; flex-direction: column; padding: 20px; color: white;
+}
+.glass {
+  background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
+}
+#menu {
+  position: absolute; inset: 0; background: rgba(5, 5, 16, 0.95);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 100; pointer-events: auto;
+}
+.btn-mode {
+  width: 280px; padding: 20px; margin: 10px; font-weight: 800;
+  text-align: center; cursor: pointer; transition: all 0.2s;
+  border: 2px solid rgba(255,255,255,0.2); border-radius: 12px;
+}
+.btn-mode:hover { background: rgba(255,255,255,0.1); border-color: white; transform: translateY(-2px); }
+.btn-setting {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px 20px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.3);
+  margin-top: 10px; cursor: pointer; font-size: 12px; font-weight: bold;
+}
+.color-btn {
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  border: 2px solid rgba(255,255,255,0.3); transition: all 0.2s;
+}
+.color-btn:hover { transform: scale(1.2); }
+.color-btn.selected { border-color: white; box-shadow: 0 0 10px rgba(255,255,255,0.8); transform: scale(1.1); }
+#mobile-btns {
+  position: absolute; bottom: 40px; width: 100%; display: flex;
+  justify-content: space-between; padding: 0 30px; pointer-events: none;
+}
+.m-btn {
+  width: 70px; height: 70px; background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 50%; pointer-events: auto; display: flex;
+  align-items: center; justify-content: center; font-weight: bold;
+  user-select: none;
+}
+#stick-container {
+  position: absolute; bottom: 50px; left: 50px;
+  width: 120px; height: 120px; background: rgba(255,255,255,0.1);
+  border-radius: 50%; display: none; pointer-events: auto;
+}
+#stick-knob {
+  position: absolute; top: 50%; left: 50%;
+  width: 50px; height: 50px; background: rgba(255,255,255,0.4);
+  border-radius: 50%; transform: translate(-50%, -50%);
+}
+#result-screen {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.6);
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 110; color: white; pointer-events: auto;
+}
+#cpu-select {
+  position: absolute; inset: 0; background: rgba(5, 5, 16, 0.96);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 105; pointer-events: auto; display: none;
+}
+.cpu-grid {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px; width: min(420px, 90vw); margin-top: 18px;
+}
+.cpu-level {
+  padding: 14px 0; border-radius: 12px; text-align: center; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08);
+  color: white; font-weight: 900;
+}
+.cpu-level:hover { background: rgba(255,255,255,0.16); }
+.cpu-back {
+  margin-top: 18px; padding: 10px 18px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08);
+  color: white; font-size: 12px; font-weight: 800;
+}
+.btn-rebuild {
+  position: absolute; top: 100px; left: 20px; pointer-events: auto;
+  background: rgba(255, 255, 255, 0.15); padding: 8px 16px;
+  border-radius: 8px; font-size: 10px; font-weight: 900;
+  color: white; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);
+}
+.btn-home {
+  position: absolute; top: 100px; left: 140px; pointer-events: auto;
+  background: rgba(255, 255, 255, 0.15); padding: 8px 16px;
+  border-radius: 8px; font-size: 10px; font-weight: 900;
+  color: white; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);
+}
+#explore-home {
+  position: absolute; top: 20px; left: 20px; pointer-events: auto;
+  z-index: 200; display: none;
+}
+.warning-poison {
+  position: absolute; bottom: 20px; width: 100%; text-align: center;
+  color: #ef4444; font-weight: 900; font-size: 14px; animation: pulse 1s infinite;
+  display: none; pointer-events: none;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+#achievement-popup {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(2);
+  opacity: 0; pointer-events: none; z-index: 200;
+  font-size: 15vw; font-weight: 900; font-style: italic; text-transform: uppercase;
+  color: #000;
+  -webkit-text-stroke: 2px rgba(255,255,255,0.8);
+  text-shadow: 10px 10px 0 rgba(0,0,0,0.5), -2px 2px 0 rgba(255,255,255,0.2);
+  transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+  white-space: nowrap;
+  letter-spacing: -0.05em;
+  background: rgba(0,0,0,0.4);
+  padding: 0 100px;
+  mix-blend-mode: difference;
+}
+#achievement-popup.active {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  letter-spacing: 0.1em;
+}
+.zoom-slider-container {
+  width: 280px; margin-top: 15px; background: rgba(255,255,255,0.05);
+  padding: 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+}
+input[type=range] {
+  width: 100%; cursor: pointer; accent-color: #4287f5;
+}
+.hidden { display: none; }
+</style>
+</head>
+<body>
 
+<div id="menu">
+  <h1 class="text-4xl font-black mb-2 tracking-tighter italic text-white">AETHER REACH</h1>
+  <p class="text-yellow-400 font-bold mb-8 tracking-widest text-xs uppercase">Gimmick Mastery Humanoid CPU Focus</p>
+  
+  <div class="btn-mode" onclick="startGame('free')">
+    <div class="text-[10px] opacity-60 tracking-widest uppercase text-white">Exploration</div>
+    <div class="text-xl text-white">FREE RUN</div>
+  </div>
+  
+  <div class="btn-mode border-purple-500 bg-purple-950/20" onclick="startGame('poison')">
+    <div class="text-[10px] opacity-60 tracking-widest uppercase text-purple-400">Survival</div>
+    <div class="text-xl text-white">POISON RUN</div>
+  </div>
+  
+  <div class="btn-mode border-red-600 bg-red-950/20" onclick="startGame('hard')">
+    <div class="text-[10px] opacity-60 tracking-widest uppercase text-red-500">Extreme Expert</div>
+    <div class="text-xl text-white">HARD MODE</div>
+  </div>
+  
+  <div class="btn-mode border-cyan-400 bg-cyan-950/20" onclick="openCpuSelect()">
+    <div class="text-[10px] opacity-60 tracking-widest uppercase text-cyan-300">CPU Battle</div>
+    <div class="text-xl text-cyan-200">ULTIMATE CPU RACE</div>
+  </div>
+  
+  <div class="btn-setting text-white" onclick="toggleControls()">
+    CONTROLS: <span id="control-label">BUTTONS</span>
+  </div>
+  
+  <div class="flex flex-col items-center mt-4">
+    <div class="text-[10px] opacity-60 tracking-widest uppercase text-white mb-2">PLAYER COLOR</div>
+    <div class="flex gap-3">
+      <div class="color-btn selected" style="background: #4287f5" onclick="setPlayerColor(this, '#4287f5')"></div>
+      <div class="color-btn" style="background: #f87171" onclick="setPlayerColor(this, '#f87171')"></div>
+      <div class="color-btn" style="background: #4ade80" onclick="setPlayerColor(this, '#4ade80')"></div>
+      <div class="color-btn" style="background: #fbbf24" onclick="setPlayerColor(this, '#fbbf24')"></div>
+      <div class="color-btn" style="background: #c084fc" onclick="setPlayerColor(this, '#c084fc')"></div>
+      <div class="color-btn" style="background: #ffffff" onclick="setPlayerColor(this, '#ffffff')"></div>
+    </div>
+  </div>
+  
+  <div class="zoom-slider-container">
+    <div class="flex justify-between text-[10px] text-white/60 mb-2 uppercase tracking-widest font-bold">
+      <span>Zoom Out Level</span>
+      <span id="zoom-value-label">NORMAL</span>
+    </div>
+    <input type="range" id="zoom-slider" min="0.5" max="1.0" step="0.05" value="1.0" oninput="updateZoomFromSlider(this.value)">
+  </div>
+  <p class="mt-8 opacity-40 text-sm text-white">A/D: Move Space: Jump</p>
+</div>
+
+<div id="cpu-select">
+  <h2 class="text-3xl font-black tracking-tighter italic text-cyan-300">ULTIMATE CPU RACE</h2>
+  <p class="mt-2 text-xs uppercase tracking-[0.3em] text-white/50">CPU個性ランク: 1 - 10 (Physics Engine Logic)</p>
+  <div class="cpu-grid">
+    <div class="cpu-level" onclick="startCpuRace(1)">1</div>
+    <div class="cpu-level" onclick="startCpuRace(2)">2</div>
+    <div class="cpu-level" onclick="startCpuRace(3)">3</div>
+    <div class="cpu-level" onclick="startCpuRace(4)">4</div>
+    <div class="cpu-level" onclick="startCpuRace(5)">5</div>
+    <div class="cpu-level" onclick="startCpuRace(6)">6</div>
+    <div class="cpu-level" onclick="startCpuRace(7)">7</div>
+    <div class="cpu-level" onclick="startCpuRace(8)">8</div>
+    <div class="cpu-level" onclick="startCpuRace(9)">9</div>
+    <div class="cpu-level" onclick="startCpuRace(10)">10</div>
+  </div>
+  <div class="cpu-back" onclick="closeCpuSelect()">BACK</div>
+</div>
+
+<div id="result-screen">
+  <h2 class="text-2xl font-bold mb-2 uppercase tracking-tighter">RESULT</h2>
+  <div id="final-alt-text" class="text-6xl font-black text-purple-500 mb-8 italic">0m</div>
+  <div class="btn-mode bg-white/10" onclick="closeResult()">BACK TO MENU</div>
+  <div class="btn-mode border-cyan-400 bg-cyan-950/40" onclick="startExploring()">EXPLORE WORLD</div>
+</div>
+
+<div id="explore-home">
+  <div class="btn-mode !w-[120px] !p-3 !bg-black/50" onclick="goHome()">HOME</div>
+</div>
+
+<div id="achievement-popup">GREAT!</div>
+
+<div class="overlay-ui">
+  <div class="flex justify-between items-start">
+    <div class="glass p-4 min-w-[120px]">
+      <div id="mode-label" class="text-[10px] opacity-50 uppercase tracking-widest">FREE RUN</div>
+      <div id="alt-val" class="text-3xl font-black italic">0m</div>
+    </div>
+    <div class="glass p-4 text-right">
+      <div class="text-[10px] opacity-50 uppercase tracking-widest">Personal Best</div>
+      <div id="best-val" class="text-xl font-bold">0m</div>
+    </div>
+  </div>
+  
+  <div id="cpu-hud" class="glass p-4 mt-3 hidden">
+    <div class="text-[10px] opacity-50 uppercase tracking-widest">CPU ALIVE</div>
+    <div id="cpu-status" class="text-xl font-bold">--</div>
+  </div>
+  
+  <div class="btn-rebuild" onclick="rebuildLevel()">REBUILD STAGE</div>
+  <div class="btn-home" onclick="goHome()">HOME</div>
+  <div id="poison-warning" class="warning-poison uppercase tracking-[0.2em]">Poison is rising!</div>
+</div>
+
+<div id="mobile-btns" class="md:hidden">
+  <div id="btn-group-move" class="flex gap-4">
+    <div id="m-left" class="m-btn text-white"><</div>
+    <div id="m-right" class="m-btn text-white">></div>
+  </div>
+  <div id="stick-container"><div id="stick-knob"></div></div>
+  <div id="m-jump" class="m-btn text-white" style="background: rgba(66, 135, 245, 0.4); width: 100px; border-radius: 20px; margin-left: auto;">JUMP</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let audioCtx = null;
+
+function playSound(type) {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+
+  if (type === 'jump') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(300, now);
+    osc.frequency.exponentialRampToValueAtTime(500, now + 0.1);
+    gain.gain.setValueAtTime(0.05, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.1);
+    osc.start(); osc.stop(now + 0.1);
+  } else if (type === 'land') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, now);
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.06);
+    osc.start(); osc.stop(now + 0.06);
+  } else if (type === 'booster') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(400, now);
+    osc.frequency.exponentialRampToValueAtTime(900, now + 0.2);
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.2);
+    osc.start(); osc.stop(now + 0.2);
+  } else if (type === 'dead') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, now);
+    osc.frequency.linearRampToValueAtTime(100, now + 0.4);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.4);
+    osc.start(); osc.stop(now + 0.4);
+  } else if (type === 'teleport') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, now);
+    osc.frequency.exponentialRampToValueAtTime(1000, now + 0.15);
+    gain.gain.setValueAtTime(0.05, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.15);
+    osc.start(); osc.stop(now + 0.15);
+  } else if (type === 'achievement') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.linearRampToValueAtTime(440, now + 0.1);
+    osc.frequency.linearRampToValueAtTime(880, now + 0.3);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    osc.start(); osc.stop(now + 0.5);
+  }
+}
+
+const CONFIG = {
+  GRAVITY: 0.58,
+  MOVE_ACCEL: 1.0,
+  MOVE_FRICTION: 0.84,
+  ICE_FRICTION: 0.98,
+  MAX_SPEED: 8.5,
+  JUMP_FORCE: -13.5,
+  COYOTE_TIME: 10,
+  JUMP_BUFFER: 10,
+  AIR_CONTROL: 0.8,
+  LEVEL_WIDTH: 2000,
+  POISON_SPEED: 1.8
+};
+
+let gameMode = 'free';
+let controlType = 'buttons';
+let zoomBaseValue = 1.0;
+let isRunning = false;
+let isExploring = false;
+let cpuModeLevel = 1;
+let playerColor = '#4287f5';
+let cpuRacers = [];
+let cpuRace = { active: false, nextCheckpoint: 200, cleared: 0, total: 20, checkpointStep: 200 };
+
+let player = {
+  x: 1000, y: 400, w: 26, h: 40,
+  vx: 0, vy: 0,
+  isGrounded: false,
+  coyoteTimer: 0,
+  jumpBuffer: 0,
+  scaleX: 1, scaleY: 1,
+  currentPlatformType: 'normal',
+  gravityFactor: 1.0
+};
+
+let camera = { x: 1000, y: 0, zoom: 1 };
+let platforms = [];
+let particles = [];
+let poisonY = 1000;
+let score = 0, bestScore = 0;
+let startTime = 0;
+let keys = {};
+let frameCount = 0;
+let lastMilestone = 0;
+let stickState = { active: false, identifier: null, startX: 0, startY: 0, moveX: 0 };
+
+let exploreInput = { active: false, lastX: 0, lastY: 0 };
+
+let bgBubbles = [];
+for (let i = 0; i < 40; i++) {
+  bgBubbles.push({
+    x: Math.random() * 2000,
+    y: Math.random() * 2000,
+    r: 10 + Math.random() * 40,
+    speed: 0.2 + Math.random() * 0.8,
+    opacity: 0.1 + Math.random() * 0.2
+  });
+}
+
+function updateZoomFromSlider(val) {
+  zoomBaseValue = parseFloat(val);
+  const label = document.getElementById('zoom-value-label');
+  if (zoomBaseValue > 0.9) label.innerText = "NORMAL";
+  else if (zoomBaseValue > 0.7) label.innerText = "WIDE";
+  else label.innerText = "ULTRA WIDE";
+}
+
+function toggleControls() {
+  controlType = controlType === 'buttons' ? 'stick' : 'buttons';
+  document.getElementById('control-label').innerText = controlType.toUpperCase();
+  updateControlUI();
+}
+
+function updateControlUI() {
+  const btnGroup = document.getElementById('btn-group-move');
+  const stickCont = document.getElementById('stick-container');
+  if (controlType === 'buttons') {
+    btnGroup.style.display = 'flex';
+    stickCont.style.display = 'none';
+  } else {
+    btnGroup.style.display = 'none';
+    stickCont.style.display = 'block';
+  }
+}
+
+function setPlayerColor(elem, color) {
+  playerColor = color;
+  document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('selected'));
+  if (elem) elem.classList.add('selected');
+}
+
+function createParticle(x, y, color, count=5) {
+  for (let i=0; i<count; i++) {
+    particles.push({
+      x: x, y: y,
+      vx: (Math.random()-0.5)*10,
+      vy: (Math.random()-0.5)*10,
+      life: 1.0,
+      decay: 0.02 + Math.random() * 0.02,
+      color: color
+    });
+  }
+}
+
+function initLevel(isRebuild = false) {
+  platforms = [];
+  platforms.push({x: 0, y: 500, w: CONFIG.LEVEL_WIDTH, h: 1000, type: 'normal', color: '#111122', state: 'active'});
+  let lastY = 500;
+  let lastX = 1000;
+
+  for (let i = 1; i < 3000; i++) {
+    const minGap = 130;
+    const maxVerticalGap = gameMode === 'hard' ? 180 : 170;
+    const maxHorizontalGap = gameMode === 'hard' ? 380 : 420;
+
+    let py = lastY - (minGap + Math.random() * (maxVerticalGap - minGap));
+    let px = lastX + (Math.random() - 0.5) * maxHorizontalGap;
+
+    if (isRebuild && i === 1) {
+      px = player.x - 50; 
+      py = player.y + player.h; 
+    }
+    px = Math.max(100, Math.min(CONFIG.LEVEL_WIDTH - 250, px));
+    let type = 'normal';
+    const rand = Math.random();
+    if (i > 5) {
+      if (rand < 0.08) type = 'moving';
+      else if (rand < 0.16) type = 'vanishing';
+      else if (rand < 0.24) type = 'crumbling';
+      else if (rand < 0.32) type = 'booster';
+      else if (rand < 0.40) type = 'conveyor';
+      else if (rand < 0.48) type = 'ice';
+      else if (rand < 0.56) type = 'toggle';
+      else if (rand < 0.64) type = 'slime';
+      else if (rand < 0.72) type = 'wind';
+      else if (rand < 0.78) type = 'teleporter';
+      else if (rand < 0.85 && gameMode === 'hard') type = 'gravity_anomaly';
+      else type = 'normal';
+    }
+
+    if (isRebuild && i === 1) type = 'normal';
+    let width = (type === 'booster' || type === 'teleporter') ? 50 : Math.max(60, 150 - (i * 0.05));
+    if (gameMode === 'hard') width *= 0.65;
+    
+    const p = { 
+      x: px, startX: px, y: py, w: (isRebuild && i === 1) ? 200 : width, h: 20, 
+      id: i, type: type, color: getPlatformColor(type, i),
+      timer: 0, 
+      state: 'active', 
+      moveOffset: Math.random() * 10,
+      dir: Math.random() > 0.5 ? 1 : -1,
+      life: 1.0, 
+      respawnTimer: 0,
+      isTouched: false
+    };
+    platforms.push(p);
+    lastY = py; lastX = px;
+  }
+}
+
+function rebuildLevel() {
+  if (!player.isGrounded) return;
+  initLevel(true);
+}
+
+function goHome() {
+  isRunning = false;
+  isExploring = false;
+  document.getElementById('menu').style.display = 'flex';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('cpu-select').style.display = 'none';
+  document.getElementById('explore-home').style.display = 'none';
+  document.querySelector('.overlay-ui').style.display = 'none';
+  document.querySelector('.overlay-ui').style.display = 'flex';
+}
+
+function getPlatformColor(type, i) {
+  if (gameMode === 'hard' && type === 'normal') return `hsl(${(10 + i * 1.5) % 360}, 60%, 40%)`;
+  switch(type) {
+    case 'moving': return '#4ade80';
+    case 'vanishing': return '#f87171';
+    case 'booster': return '#fbbf24';
+    case 'crumbling': return '#a78bfa';
+    case 'conveyor': return '#38bdf8';
+    case 'ice': return '#e0f2fe';
+    case 'toggle': return '#f472b6';
+    case 'slime': return '#22c55e';
+    case 'wind': return 'rgba(255,255,255,0.2)';
+    case 'gravity_anomaly': return '#ef4444';
+    case 'teleporter': return '#c084fc';
+    default: return `hsl(${(210 + i * 1.5) % 360}, 60%, 55%)`;
+  }
+}
+
+function openCpuSelect() {
+  document.getElementById('cpu-select').style.display = 'flex';
+}
+
+function closeCpuSelect() {
+  document.getElementById('cpu-select').style.display = 'none';
+}
+
+function startCpuRace(level) {
+  cpuModeLevel = level;
+  closeCpuSelect();
+  startGame('cpu', level);
+}
+
+function startGame(mode, cpuLevel = 1) {
+  gameMode = mode;
+  cpuModeLevel = cpuLevel;
+  isExploring = false;
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('cpu-select').style.display = 'none';
+  document.getElementById('mode-label').innerText = mode.toUpperCase().replace('_', ' ');
+  document.getElementById('poison-warning').style.display = mode === 'poison' ? 'block' : 'none';
+  document.getElementById('cpu-hud').classList.toggle('hidden', mode !== 'cpu');
+  document.getElementById('explore-home').style.display = 'none';
+  document.querySelector('.overlay-ui').style.display = 'flex';
+  
+  isRunning = true;
+  updateControlUI();
+  resetPlayer();
+  initLevel();
+  startTime = Date.now();
+  poisonY = 1000;
+  lastMilestone = 0;
+  particles = [];
+  cpuRace.active = false;
+  
+  if (mode === 'cpu') {
+    document.getElementById('mode-label').innerText = `ADVANCED AI CPU Lv.${cpuLevel}`;
+    initCpuRace();
+  }
+}
+
+function closeResult() {
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('menu').style.display = 'flex';
+}
+
+function startExploring() {
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('explore-home').style.display = 'block';
+  document.querySelector('.overlay-ui').style.display = 'none';
+  isExploring = true;
+  camera.zoom = 0.5;
+}
+
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if(['Space', 'ArrowUp', 'KeyW'].includes(e.code)) player.jumpBuffer = CONFIG.JUMP_BUFFER;
+});
+
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+window.addEventListener('wheel', e => {
+  if (isExploring) {
+    camera.zoom *= (e.deltaY > 0 ? 0.9 : 1.1);
+    camera.zoom = Math.max(0.01, Math.min(camera.zoom, 2));
+  }
+}, {passive: false});
+
+function triggerAchievement(text) {
+  const el = document.getElementById('achievement-popup');
+  el.innerText = text;
+  el.classList.add('active');
+  playSound('achievement');
+  setTimeout(() => el.classList.remove('active'), 2000);
+}
+
+// ========================================
+// CPU AI REBUILD - GLOBAL GIMMICK MASTER EDITION
+// ========================================
+
+function initCpuRace() {
+  cpuRacers = [];
+  cpuRace = { active: true, nextCheckpoint: 200, cleared: 0, total: 20, checkpointStep: 200 };
+  for (let i = 0; i < cpuRace.total; i++) {
+    // 物理パラメータのベース個体差
+    const speedVar = 0.95 + Math.random() * 0.15;
+    const accelVar = 0.9 + Math.random() * 0.3;
+    const jumpVar = 0.96 + Math.random() * 0.1;
+    
+    // 難易度(cpuModeLevel 1〜10)に応じた明確なAIクラスの割り当て
+    // Lv1-2: ランダムウォーカー
+    // Lv3-4: グリーディークライマー
+    // Lv5-6: フィジクスアウェア
+    // Lv7-8: マルチホッププランナー
+    // Lv9-10: オプティマルレーサー
+    const level = cpuModeLevel;
+    let strategyClass = "GreedyClimber";
+    if (level <= 2) strategyClass = "RandomWalker";
+    else if (level <= 4) strategyClass = "GreedyClimber";
+    else if (level <= 6) strategyClass = "PhysicsAware";
+    else if (level <= 8) strategyClass = "MultiHopPlanner";
+    else strategyClass = "OptimalRacer";
+
+    // 難易度と戦略クラスに基づいた個別性格パラメータ設計
+    const personality = {
+      strategyClass: strategyClass,
+      reactionDelay: Math.max(0, Math.floor((11 - level) * 2.2)), // 低レベルほど大きな判断ディレイ
+      riskTolerance: level <= 4 ? 0.8 : (level <= 8 ? 0.2 : 0.5),   // 中位AIは危険を避け、最高位AIはあえて活用する
+      aggressionLevel: 0.2 + (level * 0.08),                       // 高いほど長距離ジャンプに挑戦
+      jumpPrecision: 0.5 + (level * 0.05),                         // ジャンプタイミングと補正の正確さ
+      boosterAffinity: level >= 7,                                 // 7以上でギミック足場を能動的ターゲットに
+      teleporterAffinity: level >= 9,                              // 9以上でワープゾーンを能動的に狙う
+    };
+    
+    const startX = 820 + i * 16 + (Math.random() - 0.5) * 40;
+    const startY = 400 + (i % 5) * 5;
+    
+    cpuRacers.push({
+      id: i + 1, x: startX, y: startY,
+      w: 26, h: 40, vx: 0, vy: 0,
+      isGrounded: false, coyoteTimer: 0, jumpBuffer: 0,
+      alive: true, scaleX: 1, scaleY: 1,
+      currentPlatformType: 'normal', gravityFactor: 1.0,
+      color: `hsl(${(180 + i * 20) % 360}, 70%, 60%)`,
+      personality: personality,
+      aiBase: {
+        accel: CONFIG.MOVE_ACCEL * accelVar,
+        maxSpeed: CONFIG.MAX_SPEED * speedVar,
+        jumpForce: CONFIG.JUMP_FORCE * jumpVar
+      },
+      memory: { 
+        lockedTarget: null, 
+        lastOnPlatform: null,
+        lastPos: {x: startX, y: startY}, 
+        stuckTimer: 0, 
+        groundTimer: 0,
+        path: [],
+        emergencyMode: false,
+        lastThinkFrame: 0,
+        readyToJump: false,
+        preparationTimer: 0,
+        edgeStuckTimer: 0,
+        targetLockedTimer: 0,
+        jumpAttempts: 0,
+        blacklistedTargets: new Set(),
+        jumpStopTimer: 0,
+        consecutiveNoProgress: 0,      // 連続非進行カウント
+        lastStuckCheckFrame: 0,        // 30fごとのスタックチェック
+        lastVerticalProgressY: startY  // 進行度比較用高度
+      }
+    });
+  }
+}
+
+function findSafeTeleportTarget(currentY) {
+  // 紫テレポートからの転送先における「詰み（落下デス・足場なしでのスタック）」を完全回避。
+  // 以下の条件を100%満足する安全な土台のみをフィルタリングして上位候補を返す：
+  // 1. 一時的に消滅する足場（vanishing/crumbling）はワープ直後の落下詰みを作るため除外
+  // 2. Y座標がテレポート高度より200px以上高い位置に存在するアクティブな通常土台（normal）
+  // 3. 次の飛び移り先が物理的に存在しない孤島状態を避けるため、ある程度の幅（w >= 80）を保持している
+  const candidates = platforms
+    .filter(p => {
+      return p.y < currentY - 200 && 
+             p.state === 'active' && 
+             p.type !== 'teleporter' &&
+             p.type !== 'vanishing' &&
+             p.type !== 'crumbling' &&
+             p.w >= 80;
+    })
+    .sort((a, b) => b.y - a.y); // 高度順（直近）にソート
+
+  if (candidates.length > 0) {
+    return candidates[Math.min(candidates.length - 1, 4)];
+  }
+  
+  const fallback = platforms
+    .filter(p => p.y < currentY - 200 && p.state === 'active' && p.type !== 'teleporter')
+    .sort((a, b) => b.y - a.y);
+  return fallback.length > 0 ? fallback[0] : null;
+}
+
+// ---------------------------------------------------------
+// CPU AI LOGIC - THE COMPLETE JUMP & NAV PHYSICS EDITION
+// ---------------------------------------------------------
+function stepCpu(cpu) {
+  if (!cpu.alive) return;
+
+  const cx = cpu.x + cpu.w / 2;
+  const cy = cpu.y + cpu.h;
+  const gravity = CONFIG.GRAVITY * cpu.gravityFactor;
+  
+  // 個体独自の jumpForce を取得して予測に利用
+  let predictedJumpForce = cpu.aiBase.jumpForce;
+  if (cpu.currentPlatformType === 'booster') predictedJumpForce = -35;
+  else if (cpu.currentPlatformType === 'slime') predictedJumpForce = -28;
+
+  if (cpu.isGrounded) cpu.memory.groundTimer++; else cpu.memory.groundTimer = 0;
+
+  const currentPlat = cpu.memory.lastOnPlatform;
+  const isOnJumpGimmick = cpu.currentPlatformType === 'booster' || cpu.currentPlatformType === 'slime' || 
+                          (currentPlat && (currentPlat.type === 'booster' || currentPlat.type === 'slime'));
+
+  // タイマー更新 (同じ土台に乗れていない時間を計測)
+  if (cpu.memory.lockedTarget && !cpu.isGrounded) {
+      cpu.memory.targetLockedTimer++;
+  } else if (cpu.isGrounded) {
+      cpu.memory.targetLockedTimer = 0;
+  }
+
+  // ★【最重要修正：3秒以上経った際の更新タイミング。jumpStopTimerは完全に撤廃】
+  const isTargetLockedTooLong = cpu.memory.targetLockedTimer >= 180;
+
+  // 着地した瞬間にロックオンを最新に更新
+  const justLanded = cpu.isGrounded && cpu.memory.groundTimer <= 2;
+  const targetInvalid = !cpu.memory.lockedTarget || (cpu.memory.lockedTarget.state !== 'active' || (cpu.memory.lockedTarget.state === 'dead' && cpu.memory.lockedTarget.respawnTimer <= 0));
+
+  if (justLanded || isOnJumpGimmick || targetInvalid || isTargetLockedTooLong) {
+    let bestTarget = null;
+    let minVerticalDist = Infinity;
+
+    // 自分より高い位置（p.y < cy）にあるすべてのアクティブな足場候補を取得
+    const candidates = platforms.filter(p => p.y < cy && p.state === 'active');
+
+    candidates.forEach(p => {
+      const dx = Math.abs((p.x + p.w / 2) - cx);
+      const dy = cy - p.y; 
+
+      // 個体独自の jumpForce と maxSpeed を使用して物理的到達可能性の計算（絶対にいけない距離は完全に除外）
+      const maxJumpHeight = (predictedJumpForce * predictedJumpForce) / (2 * gravity);
+      const airTime = Math.abs(predictedJumpForce / gravity) * 2;
+      
+      const currentMaxHorizontalRange = isOnJumpGimmick 
+        ? cpu.aiBase.maxSpeed * airTime * 2.5 
+        : cpu.aiBase.maxSpeed * airTime * 1.35;
+
+      const currentMaxJumpHeight = isOnJumpGimmick ? maxJumpHeight * 6.0 : maxJumpHeight * 1.5;
+
+      // 個体差物理法則的に絶対に届かない距離にある足場は除外
+      if (dy < -250 || dy > currentMaxJumpHeight || dx > currentMaxHorizontalRange) return;
+
+      // 基本的に自分とY座標が最も近い土台をロックオンする
+      if (dy < minVerticalDist) {
+        minVerticalDist = dy;
+        bestTarget = p;
+      }
+    });
+
+    if (bestTarget) {
+      cpu.memory.lockedTarget = bestTarget;
+      cpu.memory.targetLockedTimer = 0; // タイマーリセット
+    } else if (targetInvalid || isTargetLockedTooLong) {
+      // セーフティ：物理的限界を無視して最もY座標が近いアクティブな土台を選択
+      let fallbackTarget = null;
+      let fallbackMinY = Infinity;
+      candidates.forEach(p => {
+        if (cy - p.y < fallbackMinY && cy - p.y > 0 && p.state === 'active') {
+          fallbackMinY = cy - p.y;
+          fallbackTarget = p;
+        }
+      });
+      cpu.memory.lockedTarget = fallbackTarget;
+      cpu.memory.targetLockedTimer = 0; 
+    }
+  }
+
+  // jumpStopTimerによるジャンプ禁止状態を完全に削除
+  cpu.memory.jumpStopTimer = 0;
+
+  let moveDir = 0;
+  if (cpu.memory.lockedTarget) {
+    const target = cpu.memory.lockedTarget;
+    
+    // 目的地への到達予測時間（個体差 jumpForce で算出）
+    let tPredict = 30;
+    const discriminantForT = predictedJumpForce * predictedJumpForce - 2 * gravity * (cy - target.y);
+    if (discriminantForT >= 0) {
+        tPredict = (-predictedJumpForce + Math.sqrt(discriminantForT)) / gravity;
+    }
+
+    // 左右に動く土台をロックオンした場合は、着地した未来の瞬間にちょうど足場が動いている予測座標txに飛び移る
+    let tx = target.x + target.w / 2;
+    if (target.type === 'moving') {
+        tx = target.startX + Math.sin((frameCount + tPredict) * 0.02 + target.moveOffset) * 200 + target.w / 2;
+    }
+
+    const hDiff = tx - cx;
+    const vDiff = cy - target.y;
+
+    if (cpu.isGrounded) {
+      // 到達判定 (個々の身体能力、加速度、摩擦に基づいた物理シミュレーションを完璧に設計)
+      const hMaxHeight = (predictedJumpForce * predictedJumpForce) / (2 * gravity);
+      const canReachHeight = vDiff < hMaxHeight + 15;
+      
+      const discriminant = predictedJumpForce * predictedJumpForce - 2 * gravity * vDiff;
+      let isPhysicallyPossible = false;
+      let t = 30;
+      
+      if (discriminant >= 0) {
+          t = (-predictedJumpForce + Math.sqrt(discriminant)) / gravity;
+          
+          // 個体独自の加速度と、最高速度、さらに摩擦抵抗 CONFIG.MOVE_FRICTION を加味した未来位置の精密シミュレーション
+          let simulatedVX = cpu.vx;
+          let simulatedX = cx;
+          for (let step = 0; step < t; step++) {
+              const testDir = hDiff > 0 ? 1 : -1;
+              simulatedVX += testDir * cpu.aiBase.accel;
+              simulatedVX = Math.max(-cpu.aiBase.maxSpeed, Math.min(cpu.aiBase.maxSpeed, simulatedVX));
+              simulatedVX *= CONFIG.MOVE_FRICTION;
+              simulatedX += simulatedVX;
+          }
+          
+          // ジャンプ到達時のシミュレーション上の座標が、動くターゲット(tx)の足場サイズの中に完全に収まるか判定
+          const targetHalfWidth = target.w / 2 + 12;
+          isPhysicallyPossible = Math.abs(tx - simulatedX) < targetHalfWidth;
+      } else if (target.type === 'booster') {
+          isPhysicallyPossible = true; 
+      }
+
+      // 消える足場の出現予測
+      let visibleArrival = true;
+      if (target.type === 'vanishing') {
+          const futureFrame = frameCount + t;
+          const period = 120;
+          const cycle = (futureFrame + target.moveOffset * 10) % period;
+          visibleArrival = (cycle < 60); 
+      }
+
+      const isCurrentMoving = currentPlat && currentPlat.type === 'moving';
+
+      // ★【個体差対応：届くようになったらもうすぐジャンプ！】
+      // 物理演算シミュレーション上で「今ジャンプすれば放物線軌道で100%次の土台(tx)に飛び移れる」と判定された瞬間、
+      // 土台の端へ行く前にその場から最速でジャンプを始動します。
+      // また、足場の端のギチギチの位置に到達した時は、膠着を防止するために強制ジャンプ。
+      const isAtEdge = currentPlat && (cpu.x < currentPlat.x + 15 || cpu.x + cpu.w > currentPlat.x + currentPlat.w - 15);
+      const canJumpOverRightNow = (isPhysicallyPossible && canReachHeight && visibleArrival) || isAtEdge;
+      
+      if (canJumpOverRightNow) {
+          cpu.jumpBuffer = CONFIG.JUMP_BUFFER;
+      }
+      
+      // ★【最重要：ブレーキ・自律停止の仕様を完全撤廃】
+      // ターゲットに向けて常に100%全速力（moveDir = 1 または -1）でキー出力を押し続け、固まりを完全に排除します。
+      moveDir = hDiff > 0 ? 1 : -1;
+
+      // ★ 立っている土台が左右に動くやつ(moving)の時に、計算によりジャンプしても届かない場合：
+      // moveDir = 0 で完全停止するのではなく、同じプラットフォーム上で反対方向にゆっくり往復移動（助走スペースの確保）し、
+      // 常に左右どちらかへの移動状態（vxの保持）をキープします。
+      if (isCurrentMoving && !isPhysicallyPossible) {
+          const spaceLeft = cx - currentPlat.x;
+          const spaceRight = (currentPlat.x + currentPlat.w) - cx;
+          moveDir = spaceLeft > spaceRight ? -1 : 1; 
+      }
+
+      // ★【水色のコンベアのところでは左右に動き時もジャンプを加えることで動きやすくする】
+      if (cpu.currentPlatformType === 'conveyor' && moveDir !== 0 && frameCount % 25 === 0) {
+          cpu.jumpBuffer = CONFIG.JUMP_BUFFER;
+      }
+
+      // 氷上でのスリップブレーキ (個体差の最高速度に連動)
+      if (cpu.currentPlatformType === 'ice' && Math.abs(hDiff) < 50 && Math.abs(cpu.vx) > 1.5) {
+          moveDir = -cpu.vx * 0.6; 
+      }
+    } else {
+      // 空中制御（ジャンプ中は左右入力を変えない、例外：現在ジャンプ系の土台から跳んでいる場合は空中制御再適用）
+      if (isOnJumpGimmick) {
+          moveDir = hDiff > 0 ? 1 : -1;
+      } else {
+          // 通常の空中は踏み切った瞬間の横移動出力方向を100%固定して一切ブレずに突入
+          moveDir = hDiff > 0 ? 1 : -1;
+      }
+    }
+  }
+
+  const friction = cpu.currentPlatformType === 'ice' ? CONFIG.ICE_FRICTION : CONFIG.MOVE_FRICTION;
+  // 空中での加速力計算時にも個々の accel 値を使用
+  const accel = cpu.isGrounded ? cpu.aiBase.accel : cpu.aiBase.accel * CONFIG.AIR_CONTROL;
+  
+  cpu.vx += moveDir * accel;
+  cpu.vx = Math.max(-cpu.aiBase.maxSpeed, Math.min(cpu.aiBase.maxSpeed, cpu.vx));
+  cpu.vx *= friction;
+  cpu.vy += gravity;
+
+  // ★【足場端補正：CPUの速度を潰さないように押し戻しだけを行う】
+  if (cpu.isGrounded && currentPlat) {
+      const edgeLeft = currentPlat.x + 4;
+      const edgeRight = currentPlat.x + currentPlat.w - 4;
+      if (cpu.x < edgeLeft) { 
+          cpu.x = edgeLeft; 
+          cpu.vx = Math.abs(cpu.vx) * 0.5; // 速度を0にせず、逆方向への微小なリバウンド推進力に変換
+      } else if (cpu.x + cpu.w > edgeRight) { 
+          cpu.x = edgeRight - cpu.w; 
+          cpu.vx = -Math.abs(cpu.vx) * 0.5; // 速度を0にせず、逆方向への微小なリバウンド推進力に変換
+      }
+  }
+  
+  if (cpu.isGrounded) cpu.coyoteTimer = CONFIG.COYOTE_TIME; else cpu.coyoteTimer--;
+  if (cpu.jumpBuffer > 0 && cpu.coyoteTimer > 0) {
+    cpu.vy = predictedJumpForce * cpu.gravityFactor;
+    cpu.isGrounded = false; cpu.coyoteTimer = 0; cpu.jumpBuffer = 0;
+    cpu.scaleX = 0.6; cpu.scaleY = 1.4;
+  }
+  if (cpu.jumpBuffer > 0) cpu.jumpBuffer--;
+  cpu.x += cpu.vx; cpu.y += cpu.vy;
+  const wasGrounded = cpu.isGrounded;
+  cpu.isGrounded = false; cpu.currentPlatformType = 'normal'; cpu.gravityFactor = 1.0;
+  platforms.forEach(p => {
+    if (p.state === 'dead' || p.state === 'invisible') return;
+    if (Math.abs(p.y - cpu.y) > 400) return;
+    const isOverlappingX = cpu.x + cpu.w > p.x && cpu.x < p.x + p.w;
+    if (cpu.vy >= 0 && isOverlappingX && cpu.y + cpu.h >= p.y && cpu.y + cpu.h <= p.y + p.h + cpu.vy) {
+      if (p.type === 'teleporter') {
+        const targetP = findSafeTeleportTarget(cpu.y);
+        if (targetP) { cpu.x = targetP.x + targetP.w / 2 - cpu.w / 2; cpu.y = targetP.y - cpu.h - 50; cpu.vy = -5; cpu.memory.lockedTarget = null; }
+        return;
+      }
+      if (p.type === 'booster') { cpu.vy = -35; return; }
+      if (p.type === 'slime') { cpu.vy = -28; return; }
+      if (p.type === 'conveyor') cpu.vx += p.dir * 0.9;
+      if (p.type === 'crumbling') p.isTouched = true;
+      if (p.type === 'gravity_anomaly' && (frameCount % 60 < 30)) cpu.gravityFactor = 0.4;
+      cpu.currentPlatformType = p.type;
+      cpu.y = p.y - cpu.h; cpu.vy = 0; cpu.isGrounded = true; cpu.memory.lastOnPlatform = p;
+      if (!wasGrounded) { cpu.scaleX = 1.4; cpu.scaleY = 0.6; }
+    }
+  });
+  
+  cpu.scaleX += (1 - cpu.scaleX) * 0.15;
+  cpu.scaleY += (1 - cpu.scaleY) * 0.15;
+  
+  if (cpu.y > camera.y + canvas.height + 900 || ((gameMode === 'poison' || gameMode === 'hard') && cpu.y + cpu.h > poisonY)) {
+    cpu.alive = false; cpuRace.cleared++; triggerAchievement(`ELIMINATED`);
+  }
+}
+
+function eliminateSlowestCpu() {
+  const living = cpuRacers.filter(c => c.alive);
+  if (!living.length) return;
+  let worst = living[0];
+  let worstScore = Infinity;
+  for (const cpu of living) {
+    const prog = Math.floor(Math.max(0, (500 - cpu.y) / 10));
+    if (prog < worstScore) {
+      worst = cpu;
+      worstScore = prog;
+    }
+  }
+  worst.alive = false;
+  cpuRace.cleared++;
+  triggerAchievement(`OUT!`);
+}
+
+function updateCpuRace() {
+  if (!cpuRace.active) return;
+  
+  // 各自の物理的な足場挙動位置の動的更新（毎フレーム必ず1回だけ実行）
+  platforms.forEach(p => {
+    let oldX = p.x;
+    if (p.type === 'moving') {
+      p.x = p.startX + Math.sin(frameCount * 0.02 + p.moveOffset) * 200;
+      // プレイヤーが動く土台の上で引きずられる仕様
+      if (player.isGrounded && player.y + player.h === p.y && player.x + player.w > p.x && player.x < p.x + p.w) {
+        player.x += (p.x - oldX);
+      }
+      // 生存しているCPUを動く足場と滑らかに同期引きずり移動
+      cpuRacers.forEach(r => {
+        if (r.alive && r.isGrounded && r.y + r.h === p.y && r.x + r.w > p.x && r.x < p.x + p.w) {
+          r.x += (p.x - oldX);
+        }
+      });
+    }
+    if (p.type === 'vanishing') {
+      const period = 120;
+      const cycle = (frameCount + p.moveOffset * 10) % period;
+      if (cycle < 60) p.state = 'active';
+      else {
+        p.state = 'invisible';
+        if (player.isGrounded && player.y + player.h === p.y && player.x + player.w > p.x && player.x < p.x + p.w) player.isGrounded = false;
+        // ターゲット消滅時に接地CPUの接地判定を解除
+        cpuRacers.forEach(r => {
+          if (r.alive && r.isGrounded && r.y + r.h === p.y && r.x + r.w > p.x && r.x < p.x + p.w) r.isGrounded = false;
+        });
+      }
+    }
+    if (p.type === 'crumbling') {
+      if (p.isTouched && p.state === 'active') {
+        p.life -= 0.025;
+        if (p.life <= 0) {
+          p.state = 'dead'; p.respawnTimer = 180;
+          if (player.isGrounded && player.y + player.h === p.y && player.x + player.w > p.x && player.x < p.x + p.w) player.isGrounded = false;
+          cpuRacers.forEach(r => {
+            if (r.alive && r.isGrounded && r.y + r.h === p.y && r.x + r.w > p.x && r.x < p.x + p.w) r.isGrounded = false;
+          });
+        }
+      } else if (p.state === 'dead') {
+        p.respawnTimer--;
+        if (p.respawnTimer <= 0) {
+          p.state = 'active'; p.life = 1.0; p.isTouched = false;
+          createParticle(player.x + player.w/2, player.y + player.h/2, p.color, 10);
+        }
+      }
+    }
+  });
+
+  for (const cpu of cpuRacers) stepCpu(cpu);
+  if (score >= cpuRace.nextCheckpoint && cpuRace.cleared < cpuRace.total - 1) {
+    cpuRace.nextCheckpoint += cpuRace.checkpointStep;
+    eliminateSlowestCpu();
+  }
+  const realLivingCount = cpuRacers.filter(c => c.alive).length;
+  const cpuStatus = document.getElementById('cpu-status');
+  if (cpuStatus) cpuStatus.innerText = `${realLivingCount} / ${cpuRace.total}`;
+  if (realLivingCount === 0) showResult(score, true);
+}
+
+function update() {
+  if (isExploring) return;
+  if (!isRunning) return;
+  frameCount++;
+  let moveDir = 0;
+  if (controlType === 'buttons') {
+    if (keys['KeyA'] || keys['ArrowLeft']) moveDir -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) moveDir += 1;
+  } else {
+    moveDir = stickState.moveX;
+  }
+  const friction = player.currentPlatformType === 'ice' ? CONFIG.ICE_FRICTION : CONFIG.MOVE_FRICTION;
+  const accel = player.isGrounded ? CONFIG.MOVE_ACCEL : CONFIG.MOVE_ACCEL * CONFIG.AIR_CONTROL;
+  player.vx += moveDir * accel;
+  player.vx *= friction;
+  player.vy += CONFIG.GRAVITY;
+  if (player.isGrounded) player.coyoteTimer = CONFIG.COYOTE_TIME;
+  else player.coyoteTimer--;
+  if (player.jumpBuffer > 0 && player.coyoteTimer > 0) {
+    player.vy = CONFIG.JUMP_FORCE * player.gravityFactor;
+    player.isGrounded = false;
+    player.coyoteTimer = 0;
+    player.jumpBuffer = 0;
+    player.scaleX = 0.6; player.scaleY = 1.4;
+    playSound('jump');
+    createParticle(player.x + player.w/2, player.y + player.h, '#fff', 8);
+  }
+  if (player.jumpBuffer > 0) player.jumpBuffer--;
+  if (gameMode === 'poison' || gameMode === 'hard') {
+    const baseSpeed = gameMode === 'hard' ? 2.3 : CONFIG.POISON_SPEED;
+    poisonY -= baseSpeed;
+    if (player.y + player.h > poisonY) { playSound('dead'); showResult(score); }
+  }
+
+  player.x += player.vx;
+  player.y += player.vy;
+  const wasGrounded = player.isGrounded;
+  player.isGrounded = false;
+  player.currentPlatformType = 'normal';
+  player.gravityFactor = 1.0;
+  platforms.forEach(p => {
+    if (p.state === 'dead' || p.state === 'invisible') return;
+    if (Math.abs(p.y - player.y) > 800) return;
+    const isOverlappingX = player.x + player.w > p.x && player.x < p.x + p.w;
+    if (player.vy >= 0 && isOverlappingX && player.y + player.h >= p.y && player.y + player.h <= p.y + p.h + player.vy) {
+      if (p.type === 'teleporter') {
+        const targetP = findSafeTeleportTarget(player.y);
+        if (targetP) {
+          playSound('teleport');
+          createParticle(player.x + player.w/2, player.y + player.h/2, p.color, 20);
+          player.x = targetP.x + targetP.w / 2 - player.w / 2;
+          player.y = targetP.y - player.h - 50;
+          player.vy = -4;
+          createParticle(player.x + player.w/2, player.y + player.h/2, p.color, 20);
+        }
+        return;
+      }
+      if (p.type === 'booster') { 
+        playSound('booster'); player.vy = -35; player.scaleX = 0.4; player.scaleY = 2.5; 
+        createParticle(player.x + player.w/2, player.y, '#fbbf24', 15); return; 
+      }
+      if (p.type === 'slime') { 
+        playSound('booster'); player.vy = -28; player.scaleX = 0.5; player.scaleY = 2.0; 
+        createParticle(player.x + player.w/2, player.y, '#22c55e', 10); return; 
+      }
+      if (p.type === 'conveyor') player.vx += p.dir * 0.9;
+      if (p.type === 'gravity_anomaly' && (frameCount % 60 < 30)) player.gravityFactor = 0.4;
+      if (p.type === 'crumbling') p.isTouched = true;
+      player.currentPlatformType = p.type;
+      player.y = p.y - player.h;
+      player.vy = 0; player.isGrounded = true;
+      if (!wasGrounded) { 
+        playSound('land'); player.scaleX = 1.4; player.scaleY = 0.6; 
+        createParticle(player.x + player.w/2, player.y + player.h, p.color, 4);
+      }
+    }
+  });
+  for(let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.life -= p.decay; 
+    if(p.life <= 0) particles.splice(i, 1);
+  }
+  player.scaleX += (1 - player.scaleX) * 0.15;
+  player.scaleY += (1 - player.scaleY) * 0.15;
+  const targetZoom = (zoomBaseValue) - (Math.abs(player.vy) * 0.005);
+  camera.zoom += (targetZoom - camera.zoom) * 0.1;
+  camera.x = (player.x + player.w / 2) - (canvas.width / 2);
+  camera.y = (player.y + player.h / 2) - (canvas.height * 0.6);
+  score = Math.floor(Math.max(0, (500 - player.y) / 10));
+  const milestone = Math.floor(score / 500) * 500;
+  if (milestone > lastMilestone && milestone > 0) {
+    lastMilestone = milestone;
+    const msgs = ["GOOD!", "GREAT!", "AMAZING!", "UNBELIEVABLE!", "GODSPEED!", "LEGENDARY!", "AETHER REACH!"];
+    const idx = Math.min(Math.floor(milestone / 500) - 1, msgs.length - 1);
+    triggerAchievement(msgs[idx]);
+  }
+  if (gameMode === 'cpu') updateCpuRace();
+  if (player.y > camera.y + canvas.height + 800) { 
+    if (gameMode === 'free') { playSound('dead'); resetPlayer(); }
+    else { playSound('dead'); showResult(score); }
+  }
+}
+
+function showResult(dist, win = false) {
+  isRunning = false;
+  const title = document.querySelector('#result-screen h2');
+  if (gameMode === 'cpu') {
+    title.innerText = win ? 'VICTORY' : 'ELIMINATED';
+    document.getElementById('final-alt-text').innerText = win ? 'WINNER' : 'DEFEATED';
+  } else {
+    title.innerText = 'RESULT';
+    document.getElementById('final-alt-text').innerText = dist + "m";
+  }
+  document.getElementById('result-screen').style.display = 'flex';
+}
+
+function resetPlayer() {
+  player.x = 1000; player.y = 400; player.vx = 0; player.vy = 0;
+  poisonY = 1000; lastMilestone = 0; particles = [];
+  if (gameMode === 'cpu') initCpuRace();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  let topColor, botColor, accentColor;
+  if (gameMode === 'hard') {
+    topColor = '#1a0505'; botColor = '#050000'; accentColor = "rgba(255,0,0,0.1)";
+  } else {
+    const hue = (210 - score * 0.1) % 360;
+    const saturation = 70 + Math.sin(score * 0.01) * 20;
+    const lightness = 80 - Math.min(score * 0.005, 40);
+    topColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    botColor = `hsl(${(hue + 40) % 360}, ${saturation - 10}%, ${lightness - 20}%)`;
+    accentColor = `hsla(${hue}, 100%, 50%, 0.1)`;
+  }
+  const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  bg.addColorStop(0, topColor); bg.addColorStop(1, botColor);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)'; ctx.lineWidth = 1;
+  const gridSize = 120;
+  const offsetX = -(camera.x * 0.3) % gridSize; const offsetY = -(camera.y * 0.3) % gridSize;
+  ctx.beginPath();
+  for(let x = offsetX - gridSize; x < canvas.width + gridSize; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+  for(let y = offsetY - gridSize; y < canvas.height + gridSize; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+  ctx.stroke(); ctx.restore();
+  bgBubbles.forEach(b => {
+    b.y -= b.speed; if(b.y < -100) { b.y = canvas.height + 100; b.x = Math.random() * canvas.width; }
+    ctx.fillStyle = accentColor; ctx.globalAlpha = b.opacity;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0;
+  });
+  ctx.save(); ctx.translate(canvas.width/2, canvas.height/2);
+  let dynamicZoom;
+  if (isRunning || isExploring) dynamicZoom = camera.zoom;
+  else {
+    const worldHeight = Math.abs(500 - player.y) + 500;
+    dynamicZoom = Math.max(0.01, Math.min(1.0, (canvas.height / worldHeight) * 0.8));
+  }
+  ctx.scale(dynamicZoom, dynamicZoom); ctx.translate(-canvas.width/2, -canvas.height/2);
+  ctx.save();
+  if (!isRunning && !isExploring) {
+    const midY = (500 + player.y) / 2; ctx.translate(-camera.x, -midY + canvas.height/2);
+  } else ctx.translate(-camera.x, -camera.y);
+  platforms.forEach(p => {
+    if (p.state === 'dead' || p.state === 'invisible') return;
+    const drawMargin = 1000 / dynamicZoom;
+    if (p.x + p.w > camera.x - drawMargin && p.x < camera.x + canvas.width + drawMargin && 
+        p.y + p.h > (isRunning ? camera.y : -10000) - drawMargin && p.y < (isRunning ? camera.y + canvas.height : 10000) + drawMargin) {
+      let color = p.color; ctx.save();
+      if (p.type === 'vanishing') { ctx.globalAlpha = 0.8; ctx.setLineDash([5, 5]); ctx.strokeStyle = color; ctx.strokeRect(p.x, p.y, p.w, p.h); ctx.setLineDash([]); }
+      if (p.type === 'crumbling') ctx.globalAlpha = p.life;
+      if (p.type === 'teleporter') { ctx.shadowBlur = 15; ctx.shadowColor = color; }
+      ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.beginPath(); ctx.roundRect(p.x + 4, p.y + 4, p.w, p.h, 6); ctx.fill();
+      ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, p.h, 6); ctx.fill(); ctx.restore();
+    }
+  }); 
+  if (gameMode === 'cpu') {
+    const checkpointY = 500 - cpuRace.nextCheckpoint * 10;
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)'; ctx.lineWidth = 4; ctx.setLineDash([10, 15]);
+    ctx.beginPath(); ctx.moveTo(0, checkpointY); ctx.lineTo(CONFIG.LEVEL_WIDTH, checkpointY); ctx.stroke(); ctx.setLineDash([]);
+    cpuRacers.forEach(cpu => {
+      if (!cpu.alive) return;
+      ctx.save(); ctx.translate(cpu.x + cpu.w/2, cpu.y + cpu.h);
+      ctx.scale(cpu.scaleX, cpu.scaleY); ctx.fillStyle = cpu.color;
+      ctx.shadowBlur = 8; ctx.shadowColor = cpu.color;
+      ctx.beginPath(); ctx.roundRect(-cpu.w/2, -cpu.h, cpu.w, cpu.h, 8); ctx.fill();
+      ctx.shadowBlur = 0; ctx.fillStyle = 'white';
+      ctx.font = 'bold 8px Arial'; ctx.textAlign = 'center'; ctx.fillText(`CPU${cpu.id}`, 0, -cpu.h - 5); ctx.restore();
+    });
+  }
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 3 * p.life, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1.0;
+  if (gameMode === 'poison' || gameMode === 'hard') {
+    const pGrad = ctx.createLinearGradient(0, poisonY, 0, poisonY + 1200);
+    pGrad.addColorStop(0, 'rgba(168, 85, 247, 0.6)'); pGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    ctx.fillStyle = pGrad; ctx.fillRect(camera.x - 5000, poisonY, canvas.width + 10000, 10000);
+  }
+  if (!isExploring) {
+    ctx.save(); ctx.translate(player.x + player.w/2, player.y + player.h);
+    ctx.scale(player.scaleX, player.scaleY); ctx.fillStyle = playerColor;
+    ctx.shadowBlur = 15; ctx.shadowColor = playerColor;
+    ctx.beginPath(); ctx.roundRect(-player.w/2, -player.h, player.w, player.h, 8); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = 'white';
+    const eyeX = (player.vx * 1.2); ctx.fillRect(-8 + eyeX, -32, 5, 5); ctx.fillRect(3 + eyeX, -32, 5, 5); ctx.restore();
+  }
+  ctx.restore(); ctx.restore();
+  document.getElementById('alt-val').innerText = score + "m";
+  requestAnimationFrame(draw);
+}
+
+function initControls() {
+  const stickCont = document.getElementById('stick-container');
+  const stickKnob = document.getElementById('stick-knob');
+  const jumpBtn = document.getElementById('m-jump');
+  const startStick = (touch) => { const rect = stickCont.getBoundingClientRect(); stickState.active = true; stickState.identifier = touch.identifier; stickState.startX = rect.left + rect.width / 2; stickState.startY = rect.top + rect.height / 2; };
+  const updateStick = (touch) => { const dx = touch.clientX - stickState.startX; const dy = touch.clientY - stickState.startY; const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 60); const angle = Math.atan2(dy, dx); const knobX = Math.cos(angle) * dist; stickKnob.style.transform = `translate(calc(-50% + ${knobX}px), -50%)`; stickState.moveX = knobX / 60; };
+  const stopStick = () => { stickState.active = false; stickState.moveX = 0; stickKnob.style.transform = `translate(-50%, -50%)`; };
+  window.addEventListener('mousedown', (e) => { if (isExploring) { exploreInput.active = true; exploreInput.lastX = e.clientX; exploreInput.lastY = e.clientY; } });
+  window.addEventListener('mousemove', (e) => { if (isExploring && exploreInput.active) { camera.x -= (e.clientX - exploreInput.lastX) / camera.zoom; camera.y -= (e.clientY - exploreInput.lastY) / camera.zoom; exploreInput.lastX = e.clientX; exploreInput.lastY = e.clientY; } });
+  window.addEventListener('mouseup', () => { exploreInput.active = false; });
+  window.addEventListener('touchstart', (e) => {
+    if (isExploring) { exploreInput.active = true; exploreInput.lastX = e.touches[0].clientX; exploreInput.lastY = e.touches[0].clientY; return; }
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const touch = e.changedTouches[i];
+      if (touch.target === stickCont || stickCont.contains(touch.target)) { e.preventDefault(); startStick(touch); }
+      else if (touch.target === jumpBtn || jumpBtn.contains(touch.target)) { e.preventDefault(); keys['Space'] = true; player.jumpBuffer = CONFIG.JUMP_BUFFER; }
+      else if (touch.target.id === 'm-left') { e.preventDefault(); keys['KeyA'] = true; }
+      else if (touch.target.id === 'm-right') { e.preventDefault(); keys['KeyD'] = true; }
+    }
+  }, {passive: false});
+  window.addEventListener('touchmove', (e) => {
+    if (isExploring) { exploreInput.active = true; exploreInput.lastX = e.touches[0].clientX; exploreInput.lastY = e.touches[0].clientY; return; }
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const touch = e.changedTouches[i];
+      if (stickState.active && touch.identifier === stickState.identifier) { e.preventDefault(); updateStick(touch); }
+    }
+  }, {passive: false});
+  window.addEventListener('touchend', (e) => {
+    exploreInput.active = false;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const touch = e.changedTouches[i];
+      if (stickState.active && touch.identifier === stickState.identifier) stopStick();
+      if (touch.target === jumpBtn || jumpBtn.contains(touch.target)) keys['Space'] = false;
+      if (touch.target.id === 'm-left') keys['KeyA'] = false;
+      if (touch.target.id === 'm-right') keys['KeyD'] = false;
+    }
+  });
+}
+
+window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+window.onresize();
+initLevel();
+initControls();
+draw();
+setInterval(update, 1000/60);
+</script>
+</body>
+</html>
