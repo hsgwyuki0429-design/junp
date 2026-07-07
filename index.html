@@ -237,6 +237,23 @@ input[type=range] { width: 100%; height: 26px; accent-color: var(--purple); curs
 }
 #screen-flash.active { opacity: 0.55; transition: opacity 0.05s; }
 
+#combo-popup {
+  position: absolute; left: 50%; top: 30%; transform: translate(-50%, 6px) scale(0.7);
+  opacity: 0; pointer-events: none; z-index: 190;
+  font-size: 8vw; font-weight: 900; font-style: italic; letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #ffd93d, #ff6ec7, #6ea8ff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 14px rgba(255, 200, 80, 0.5));
+  white-space: nowrap;
+}
+#combo-popup.active { animation: comboPop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) forwards; }
+@keyframes comboPop {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.6); }
+  25% { opacity: 1; transform: translate(-50%, -4px) scale(1.15); }
+  70% { opacity: 1; transform: translate(-50%, -4px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -14px) scale(1); }
+}
+
 /* ===== モバイル操作 ===== */
 #mobile-btns {
   position: absolute; bottom: calc(30px + env(safe-area-inset-bottom)); width: 100%;
@@ -356,7 +373,6 @@ input[type=range] { width: 100%; height: 26px; accent-color: var(--purple); curs
     <div class="tut-block" style="color:#e0f2fe"><div class="tut-chip" style="background:#e0f2fe"></div><div><div class="tut-name">氷 / アイス</div><div class="tut-desc">ツルツル滑って止まりにくい。慣性に注意。</div></div></div>
     <div class="tut-block" style="color:#22c55e"><div class="tut-chip" style="background:#22c55e"></div><div><div class="tut-name">黄緑 / スライム</div><div class="tut-desc">ポヨンと弾む。ブースターより控えめな連続ジャンプ。</div></div></div>
     <div class="tut-block" style="color:#f472b6"><div class="tut-chip" style="background:#f472b6"></div><div><div class="tut-name">ピンク / トグル</div><div class="tut-desc">周期で実体化⇔すり抜けを切替。光っている時だけ乗れる。</div></div></div>
-    <div class="tut-block" style="color:#7dd3fc"><div class="tut-chip" style="background:#7dd3fc"></div><div><div class="tut-name">空色 / ウィンド</div><div class="tut-desc">上空に上昇気流。上を通ると押し上げられ滞空できる。</div></div></div>
     <div class="tut-block" style="color:#ef4444"><div class="tut-chip" style="background:#ef4444"></div><div><div class="tut-name">赤発光 / 重力異常 (ハード)</div><div class="tut-desc">乗ると重力が弱まりフワッと浮く。ハードモード限定。</div></div></div>
 
     <button class="btn-ghost" onclick="closeTutorial()">閉じる</button>
@@ -397,6 +413,7 @@ input[type=range] { width: 100%; height: 26px; accent-color: var(--purple); curs
 </div>
 
 <div id="achievement-popup">GREAT!</div>
+<div id="combo-popup">COMBO ×3</div>
 <div id="screen-flash"></div>
 
 <div class="overlay-ui">
@@ -438,57 +455,68 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let audioCtx = null;
 
-function playSound(type) {
+function ensureAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  const now = audioCtx.currentTime;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
 
+// 単音を鳴らす小さなシンセ。detuneした2発を重ねて厚みを出す(スーパーソウ風)。
+function playTone(freq, { at = 0, dur = 0.16, type = 'sine', gain = 0.07, glideTo = null, detune = 6, pan = 0 } = {}) {
+  const ac = ensureAudio();
+  const t0 = ac.currentTime + at;
+  const g = ac.createGain();
+  let node = g;
+  if (ac.createStereoPanner && pan) { const p = ac.createStereoPanner(); p.pan.setValueAtTime(pan, t0); g.connect(p); p.connect(ac.destination); }
+  else g.connect(ac.destination);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + Math.min(0.012, dur * 0.2));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  [0, detune].forEach(d => {
+    const osc = ac.createOscillator();
+    osc.type = type; osc.detune.setValueAtTime(d, t0);
+    osc.frequency.setValueAtTime(freq, t0);
+    if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur);
+    osc.connect(g); osc.start(t0); osc.stop(t0 + dur + 0.02);
+  });
+}
+
+// 上昇アルペジオ(コンボ/実績/ベスト更新などの高揚感演出に使用)
+function playArpeggio(freqs, { step = 0.05, dur = 0.14, type = 'triangle', gain = 0.075 } = {}) {
+  freqs.forEach((f, i) => playTone(f, { at: i * step, dur, type, gain }));
+}
+
+const NOTE = { C4: 261.6, D4: 293.7, E4: 329.6, G4: 392.0, A4: 440.0, C5: 523.3, D5: 587.3, E5: 659.3, G5: 784.0, A5: 880.0, C6: 1046.5 };
+
+function playSound(type) {
   if (type === 'jump') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(300, now);
-    osc.frequency.exponentialRampToValueAtTime(500, now + 0.1);
-    gain.gain.setValueAtTime(0.05, now);
-    gain.gain.linearRampToValueAtTime(0, now + 0.1);
-    osc.start(); osc.stop(now + 0.1);
+    playTone(360, { dur: 0.1, type: 'sine', gain: 0.055, glideTo: 620 });
   } else if (type === 'land') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(150, now);
-    gain.gain.setValueAtTime(0.04, now);
-    gain.gain.linearRampToValueAtTime(0, now + 0.06);
-    osc.start(); osc.stop(now + 0.06);
+    playTone(160, { dur: 0.07, type: 'sine', gain: 0.05, glideTo: 90 });
   } else if (type === 'booster') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(400, now);
-    osc.frequency.exponentialRampToValueAtTime(900, now + 0.2);
-    gain.gain.setValueAtTime(0.06, now);
-    gain.gain.linearRampToValueAtTime(0, now + 0.2);
-    osc.start(); osc.stop(now + 0.2);
+    playTone(420, { dur: 0.22, type: 'sawtooth', gain: 0.05, glideTo: 1100 });
+    playTone(840, { dur: 0.22, type: 'sine', gain: 0.035, glideTo: 1600, detune: 0 });
+  } else if (type === 'slime') {
+    playTone(300, { dur: 0.18, type: 'sine', gain: 0.06, glideTo: 480 });
+    playTone(300, { at: 0.05, dur: 0.12, type: 'sine', gain: 0.03, glideTo: 360 });
   } else if (type === 'dead') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(200, now);
-    osc.frequency.linearRampToValueAtTime(100, now + 0.4);
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.linearRampToValueAtTime(0, now + 0.4);
-    osc.start(); osc.stop(now + 0.4);
-  } else if (type === 'teleport') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(600, now);
-    osc.frequency.exponentialRampToValueAtTime(1000, now + 0.15);
-    gain.gain.setValueAtTime(0.05, now);
-    gain.gain.linearRampToValueAtTime(0, now + 0.15);
-    osc.start(); osc.stop(now + 0.15);
+    playTone(260, { dur: 0.45, type: 'sine', gain: 0.08, glideTo: 90, detune: 3 });
+  } else if (type === 'click') {
+    playTone(720, { dur: 0.045, type: 'sine', gain: 0.04, detune: 0 });
+  } else if (type === 'whoosh') {
+    playTone(180, { dur: 0.12, type: 'sine', gain: 0.03, glideTo: 60 });
   } else if (type === 'achievement') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(220, now);
-    osc.frequency.linearRampToValueAtTime(440, now + 0.1);
-    osc.frequency.linearRampToValueAtTime(880, now + 0.3);
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-    osc.start(); osc.stop(now + 0.5);
+    playArpeggio([NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6], { step: 0.07, dur: 0.22, gain: 0.075 });
+  } else if (type === 'newbest') {
+    playArpeggio([NOTE.C4, NOTE.E4, NOTE.G4, NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6], { step: 0.045, dur: 0.3, type: 'triangle', gain: 0.07 });
   }
+}
+
+// コンボ段数に応じて跳ね上がるベル音(ペンタトニックで気持ちよく積み上がる)
+const COMBO_SCALE = [523.3, 587.3, 659.3, 784.0, 880.0, 1046.5, 1174.7, 1318.5, 1568.0, 1760.0];
+function playCombo(step) {
+  const f = COMBO_SCALE[Math.min(step, COMBO_SCALE.length - 1)];
+  playTone(f, { dur: 0.16, type: 'triangle', gain: 0.065 + Math.min(step, 6) * 0.006 });
 }
 
 const CONFIG = {
@@ -529,12 +557,17 @@ let player = {
 let camera = { x: 1000, y: 0, zoom: 0.5 };
 let platforms = [];
 let particles = [];
+let shockwaves = [];
+let shake = { t: 0, mag: 0 };
+let combo = { count: 0, timer: 0 };
 let poisonY = 1000;
 let score = 0, bestScore = 0;
 let startTime = 0;
 let keys = {};
 let frameCount = 0;
 let lastMilestone = 0;
+let runStartBest = 0;
+let newBestCelebrated = false;
 let stickState = { active: false, identifier: null, startX: 0, startY: 0, moveX: 0 };
 
 let exploreInput = { active: false, lastX: 0, lastY: 0 };
@@ -639,8 +672,7 @@ function initLevel(isRebuild = false) {
       else if (rand < 0.48) type = 'ice';
       else if (rand < 0.56) type = 'toggle';
       else if (rand < 0.64) type = 'slime';
-      else if (rand < 0.74) type = 'wind';
-      else if (rand < 0.82 && gameMode === 'hard') type = 'gravity_anomaly';
+      else if (rand < 0.72 && gameMode === 'hard') type = 'gravity_anomaly';
       else type = 'normal';
     }
 
@@ -691,7 +723,6 @@ function getPlatformColor(type, i) {
     case 'ice': return '#e0f2fe';
     case 'toggle': return '#f472b6';
     case 'slime': return '#22c55e';
-    case 'wind': return '#7dd3fc';
     case 'gravity_anomaly': return '#ef4444';
     default: return `hsl(${(210 + i * 1.5) % 360}, 60%, 55%)`;
   }
@@ -726,6 +757,8 @@ function startGame(mode, cpuLevel = 1) {
   
   isRunning = true;
   loadBestScore();
+  runStartBest = bestScore;
+  newBestCelebrated = false;
   updateControlUI();
   resetPlayer();
   initLevel();
@@ -733,6 +766,8 @@ function startGame(mode, cpuLevel = 1) {
   poisonY = 1000;
   lastMilestone = 0;
   particles = [];
+  shockwaves = [];
+  combo.count = 0; combo.timer = 0;
   cpuRace.active = false;
   
   if (mode === 'cpu') {
@@ -768,11 +803,11 @@ window.addEventListener('wheel', e => {
   }
 }, {passive: false});
 
-function triggerAchievement(text) {
+function triggerAchievement(text, sound = 'achievement') {
   const el = document.getElementById('achievement-popup');
   el.innerText = text;
   el.classList.add('active');
-  playSound('achievement');
+  if (sound) playSound(sound);
   setTimeout(() => el.classList.remove('active'), 2000);
 }
 
@@ -785,9 +820,9 @@ function triggerFlash(color) {
 }
 
 // ドーパミン演出: 中央からの派手なコンフェッティ爆発
-function confettiBurst(cx, cy) {
+function confettiBurst(cx, cy, count = 60) {
   const cols = ['#ff5edb', '#ffd93d', '#6ea8ff', '#4ade80', '#c084fc', '#ff9d4d', '#22d3ee'];
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < count; i++) {
     const ang = Math.random() * Math.PI * 2;
     const spd = 4 + Math.random() * 12;
     particles.push({
@@ -798,6 +833,25 @@ function confettiBurst(cx, cy) {
       color: cols[(Math.random() * cols.length) | 0]
     });
   }
+}
+
+// ドーパミン演出: カメラを揺らす小さな衝撃(着地・ブースト・実績で使用)
+function shakeScreen(mag, frames = 10) {
+  shake.mag = Math.max(shake.mag, mag);
+  shake.t = Math.max(shake.t, frames);
+}
+
+// ドーパミン演出: 着地地点から広がる衝撃波リング
+function spawnShockwave(x, y, color, maxR = 70) {
+  shockwaves.push({ x, y, r: 4, maxR, life: 1.0, color });
+}
+
+// コンボ演出: 段数に応じたポップテキストを一瞬表示
+function popComboText(n) {
+  const el = document.getElementById('combo-popup');
+  if (!el) return;
+  el.innerText = `COMBO ×${n}`;
+  el.classList.remove('active'); void el.offsetWidth; el.classList.add('active');
 }
 
 // ========================================
@@ -1027,12 +1081,6 @@ function stepCpu(cpu) {
   platforms.forEach(p => {
     if (p.state === 'dead' || p.state === 'invisible') return;
     if (Math.abs(p.y - cpu.y) > 400) return;
-    // 空色ウィンド: 足場の上空にいるとき上昇気流で押し上げる
-    if (p.type === 'wind') {
-      const inX = cpu.x + cpu.w > p.x - 10 && cpu.x < p.x + p.w + 10;
-      const above = cpu.y + cpu.h <= p.y && cpu.y + cpu.h > p.y - 300;
-      if (inX && above) { cpu.vy -= 1.1; if (cpu.vy < -7) cpu.vy = -7; }
-    }
     const isOverlappingX = cpu.x + cpu.w > p.x && cpu.x < p.x + p.w;
     if (cpu.vy >= 0 && isOverlappingX && cpu.y + cpu.h >= p.y && cpu.y + cpu.h <= p.y + p.h + cpu.vy) {
       if (p.type === 'booster') { cpu.vy = -35; return; }
@@ -1050,7 +1098,7 @@ function stepCpu(cpu) {
   cpu.scaleY += (1 - cpu.scaleY) * 0.15;
   
   if (cpu.y > camera.y + canvas.height + 900 || ((gameMode === 'poison' || gameMode === 'hard') && cpu.y + cpu.h > poisonY)) {
-    cpu.alive = false; cpuRace.cleared++; triggerAchievement(`ELIMINATED`);
+    cpu.alive = false; cpuRace.cleared++; triggerAchievement(`ELIMINATED`, 'whoosh');
   }
 }
 
@@ -1068,7 +1116,7 @@ function eliminateSlowestCpu() {
   }
   worst.alive = false;
   cpuRace.cleared++;
-  triggerAchievement(`OUT!`);
+  triggerAchievement(`OUT!`, 'whoosh');
 }
 
 // ギミック足場の状態更新（全モード共通で毎フレーム実行）
@@ -1178,24 +1226,20 @@ function update() {
   platforms.forEach(p => {
     if (p.state === 'dead' || p.state === 'invisible') return;
     if (Math.abs(p.y - player.y) > 800) return;
-    // 空色ウィンド: 足場の上空で上昇気流に押し上げられる
-    if (p.type === 'wind') {
-      const inX = player.x + player.w > p.x - 10 && player.x < p.x + p.w + 10;
-      const above = player.y + player.h <= p.y && player.y + player.h > p.y - 300;
-      if (inX && above) {
-        player.vy -= 1.1; if (player.vy < -7) player.vy = -7;
-        if (frameCount % 3 === 0) createParticle(player.x + player.w/2, player.y + player.h, '#7dd3fc', 2);
-      }
-    }
     const isOverlappingX = player.x + player.w > p.x && player.x < p.x + p.w;
     if (player.vy >= 0 && isOverlappingX && player.y + player.h >= p.y && player.y + player.h <= p.y + p.h + player.vy) {
       if (p.type === 'booster') {
-        playSound('booster'); player.vy = -35; player.scaleX = 0.4; player.scaleY = 2.5; 
-        createParticle(player.x + player.w/2, player.y, '#fbbf24', 15); return; 
+        playSound('booster'); player.vy = -35; player.scaleX = 0.4; player.scaleY = 2.5;
+        createParticle(player.x + player.w/2, player.y, '#fbbf24', 18);
+        spawnShockwave(player.x + player.w/2, player.y + player.h, '#fbbf24', 100);
+        shakeScreen(7, 12);
+        return;
       }
-      if (p.type === 'slime') { 
-        playSound('booster'); player.vy = -28; player.scaleX = 0.5; player.scaleY = 2.0; 
-        createParticle(player.x + player.w/2, player.y, '#22c55e', 10); return; 
+      if (p.type === 'slime') {
+        playSound('slime'); player.vy = -28; player.scaleX = 0.5; player.scaleY = 2.0;
+        createParticle(player.x + player.w/2, player.y, '#22c55e', 12);
+        spawnShockwave(player.x + player.w/2, player.y + player.h, '#22c55e', 70);
+        return;
       }
       if (p.type === 'conveyor') player.vx += p.dir * 0.9;
       if (p.type === 'gravity_anomaly' && (frameCount % 60 < 30)) player.gravityFactor = 0.4;
@@ -1203,17 +1247,31 @@ function update() {
       player.currentPlatformType = p.type;
       player.y = p.y - player.h;
       player.vy = 0; player.isGrounded = true;
-      if (!wasGrounded) { 
-        playSound('land'); player.scaleX = 1.4; player.scaleY = 0.6; 
-        createParticle(player.x + player.w/2, player.y + player.h, p.color, 4);
+      if (!wasGrounded) {
+        playSound('land'); player.scaleX = 1.4; player.scaleY = 0.6;
+        createParticle(player.x + player.w/2, player.y + player.h, p.color, 6);
+        spawnShockwave(player.x + player.w/2, player.y + player.h, p.color, 46);
+
+        // ドーパミン演出: 素早い連続着地でコンボが積み上がる
+        if (combo.timer > 0) combo.count++; else combo.count = 1;
+        combo.timer = 100;
+        playCombo(combo.count - 1);
+        if (combo.count >= 3 && combo.count % 3 === 0) popComboText(combo.count);
       }
     }
   });
+  if (combo.timer > 0) combo.timer--; else combo.count = 0;
   for(let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
-    p.x += p.vx; p.y += p.vy; p.life -= p.decay; 
+    p.x += p.vx; p.y += p.vy; p.life -= p.decay;
     if(p.life <= 0) particles.splice(i, 1);
   }
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    const s = shockwaves[i];
+    s.r += (s.maxR - s.r) * 0.18 + 1.5; s.life -= 0.045;
+    if (s.life <= 0) shockwaves.splice(i, 1);
+  }
+  if (shake.t > 0) { shake.t--; shake.mag *= 0.88; } else shake.mag = 0;
   player.scaleX += (1 - player.scaleX) * 0.15;
   player.scaleY += (1 - player.scaleY) * 0.15;
   const targetZoom = (zoomBaseValue) - (Math.abs(player.vy) * 0.005);
@@ -1222,6 +1280,14 @@ function update() {
   camera.y = (player.y + player.h / 2) - (canvas.height * 0.6);
   score = Math.floor(Math.max(0, (500 - player.y) / 10));
   if (score > bestScore) { bestScore = score; saveBestScore(); }
+  // ドーパミン演出: 自己ベストを更新した瞬間に一度だけ盛大に祝う
+  if (!newBestCelebrated && runStartBest > 0 && score > runStartBest) {
+    newBestCelebrated = true;
+    triggerAchievement('NEW BEST!', 'newbest');
+    triggerFlash('#ffe89a');
+    confettiBurst(player.x + player.w/2, player.y, 100);
+    shakeScreen(9, 20);
+  }
   // 高速移動中は残像トレイルを出す（ドーパミン演出）
   if (Math.abs(player.vy) > 12 && frameCount % 2 === 0) {
     createParticle(player.x + player.w/2, player.y + player.h/2, playerColor, 1);
@@ -1234,6 +1300,7 @@ function update() {
     triggerAchievement(msgs[idx]);
     triggerFlash('#ffffff');
     confettiBurst(player.x + player.w/2, player.y);
+    shakeScreen(5, 10);
   }
   if (gameMode === 'cpu') updateCpuRace();
   if (player.y > camera.y + canvas.height + 800) { 
@@ -1257,7 +1324,9 @@ function showResult(dist, win = false) {
 
 function resetPlayer() {
   player.x = 1000; player.y = 400; player.vx = 0; player.vy = 0;
-  poisonY = 1000; lastMilestone = 0; particles = [];
+  poisonY = 1000; lastMilestone = 0; particles = []; shockwaves = [];
+  combo.count = 0; combo.timer = 0;
+  newBestCelebrated = false;
   if (gameMode === 'cpu') initCpuRace();
 }
 
@@ -1299,6 +1368,9 @@ function draw() {
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0;
   });
   ctx.save(); ctx.translate(canvas.width/2, canvas.height/2);
+  if (shake.mag > 0.05) {
+    ctx.translate((Math.random() - 0.5) * 2 * shake.mag, (Math.random() - 0.5) * 2 * shake.mag);
+  }
   let dynamicZoom;
   if (isRunning || isExploring) dynamicZoom = camera.zoom;
   else {
@@ -1318,20 +1390,6 @@ function draw() {
     if (p.x + p.w > camera.x - drawMargin && p.x < camera.x + canvas.width + drawMargin &&
         p.y + p.h > (isRunning ? camera.y : -10000) - drawMargin && p.y < (isRunning ? camera.y + canvas.height : 10000) + drawMargin) {
       let color = p.color; ctx.save();
-
-      // 空色ウィンド: 上昇気流のオーラを描画
-      if (p.type === 'wind') {
-        const g = ctx.createLinearGradient(0, p.y - 260, 0, p.y);
-        g.addColorStop(0, 'rgba(125,211,252,0)'); g.addColorStop(1, 'rgba(125,211,252,0.22)');
-        ctx.fillStyle = g; ctx.fillRect(p.x, p.y - 260, p.w, 260);
-        // 上向きの気流ライン
-        ctx.strokeStyle = 'rgba(125,211,252,0.5)'; ctx.lineWidth = 2;
-        for (let k = 0; k < 3; k++) {
-          const lx = p.x + p.w * (0.25 + k * 0.25);
-          const ph = (frameCount * 2 + k * 40) % 220;
-          ctx.beginPath(); ctx.moveTo(lx, p.y - ph); ctx.lineTo(lx, p.y - ph - 26); ctx.stroke();
-        }
-      }
 
       // トグル: OFF時はゴースト、ON時は残り時間で明滅
       if (p.type === 'toggle') {
@@ -1380,6 +1438,12 @@ function draw() {
   particles.forEach(p => {
     ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
     ctx.beginPath(); ctx.arc(p.x, p.y, 3 * p.life, 0, Math.PI*2); ctx.fill();
+  });
+  // ドーパミン演出: 着地・ブースト地点から広がる衝撃波リング
+  shockwaves.forEach(s => {
+    ctx.globalAlpha = Math.max(0, s.life) * 0.7;
+    ctx.strokeStyle = s.color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.stroke();
   });
   ctx.globalAlpha = 1.0;
   if (gameMode === 'poison' || gameMode === 'hard') {
@@ -1438,6 +1502,13 @@ function initControls() {
     }
   });
 }
+
+// ドーパミン演出: メニュー等のUI操作に心地よいクリック音を添える
+document.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('.mode-card, .pill, .chip, .cpu-level, .btn-primary, .btn-ghost, .color-btn')) {
+    playSound('click');
+  }
+});
 
 window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
 window.onresize();
