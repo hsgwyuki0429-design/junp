@@ -576,6 +576,26 @@ let stickState = { active: false, identifier: null, startX: 0, startY: 0, moveX:
 let exploreInput = { active: false, lastX: 0, lastY: 0 };
 let punch = 0; // 大技を決めた瞬間の画面パンチ(ズームバウンス)演出
 
+// ふわふわ漂う雲(明るい空の演出)
+let clouds = [];
+for (let i = 0; i < 7; i++) {
+  clouds.push({
+    x: Math.random() * 1400,
+    yf: 0.03 + Math.random() * 0.42,   // 画面高に対する縦位置の割合(空側に寄せる)
+    s: 0.7 + Math.random() * 1.0,       // 大きさ
+    sp: 0.12 + Math.random() * 0.32,    // 流れる速さ
+    op: 0.55 + Math.random() * 0.4      // 不透明度
+  });
+}
+function drawCloud(cx, cy, s, op) {
+  ctx.save();
+  ctx.globalAlpha = op;
+  ctx.fillStyle = '#ffffff';
+  const puffs = [[0, 2, 26], [24, 8, 20], [-24, 8, 20], [12, -12, 19], [-13, -10, 17], [0, 12, 25]];
+  puffs.forEach(([dx, dy, r]) => { ctx.beginPath(); ctx.arc(cx + dx * s, cy + dy * s, r * s, 0, Math.PI * 2); ctx.fill(); });
+  ctx.restore();
+}
+
 function updateZoomFromSlider(val) {
   zoomBaseValue = parseFloat(val);
   const label = document.getElementById('zoom-value-label');
@@ -637,7 +657,7 @@ function createParticle(x, y, color, count=5) {
 
 function initLevel(isRebuild = false) {
   platforms = [];
-  platforms.push({x: 0, y: 500, w: CONFIG.LEVEL_WIDTH, h: 1000, type: 'normal', color: gameMode === 'hard' ? '#d99a9a' : '#c7bdec', state: 'active'});
+  platforms.push({x: 0, y: 500, w: CONFIG.LEVEL_WIDTH, h: 1000, type: 'normal', color: gameMode === 'hard' ? '#c98a6a' : '#e3d79c', state: 'active'});
   let lastY = 500;
   let lastX = 1000;
 
@@ -1334,19 +1354,19 @@ function resetPlayer() {
   if (gameMode === 'cpu') initCpuRace();
 }
 
-// 明るいパステルの単色背景を短い間隔でパッと切り替える。グラデーションにはしない。
+// 明るく爽やかな空カラーの単色背景を短い間隔でパッと切り替える。グラデーションにはしない。
 const FLAT_BG = [
-  { fill: [206, 230, 255], accent: [120, 175, 255] },  // スカイ
-  { fill: [230, 218, 255], accent: [170, 130, 255] },  // ラベンダー
-  { fill: [255, 218, 240], accent: [255, 140, 205] },  // ピンク
-  { fill: [206, 246, 228], accent: [90, 220, 175] },   // ミント
-  { fill: [255, 236, 206], accent: [255, 190, 110] },  // ピーチ
-  { fill: [224, 240, 250], accent: [120, 205, 235] },  // アクア
+  { fill: [116, 200, 232], accent: [70, 170, 220] },   // スカイブルー
+  { fill: [124, 214, 208], accent: [70, 195, 188] },   // アクアマリン
+  { fill: [150, 224, 168], accent: [80, 205, 120] },   // フレッシュグリーン
+  { fill: [255, 224, 130], accent: [255, 196, 80] },   // サニーイエロー
+  { fill: [255, 172, 150], accent: [255, 130, 105] },  // コーラル
+  { fill: [188, 172, 244], accent: [150, 118, 235] },  // ラベンダー
 ];
 const FLAT_BG_HARD = [
-  { fill: [255, 208, 205], accent: [255, 120, 105] },  // コーラル
-  { fill: [255, 222, 200], accent: [255, 155, 90] },   // アプリコット
-  { fill: [255, 205, 220], accent: [255, 110, 140] },  // ローズ
+  { fill: [255, 150, 130], accent: [255, 95, 75] },    // コーラル
+  { fill: [255, 176, 120], accent: [255, 130, 60] },   // アプリコット
+  { fill: [255, 148, 168], accent: [255, 90, 120] },   // ローズ
 ];
 const BG_HOLD = 46;   // 一色を保持するフレーム数(約0.77秒ごとに切替 = 結構な頻度)
 const BG_BLEND = 9;   // 切替の瞬間だけ素早くクロスフェード
@@ -1372,14 +1392,12 @@ function draw() {
     ctx.fillStyle = rgbStr(accent, 0.16 * (1 - (frameCount % BG_HOLD) / BG_BLEND));
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
-  ctx.save();
-  ctx.strokeStyle = gameMode === 'hard' ? 'rgba(120, 30, 30, 0.06)' : 'rgba(90, 70, 150, 0.06)'; ctx.lineWidth = 1;
-  const gridSize = 120;
-  const offsetX = -(camera.x * 0.3) % gridSize; const offsetY = -(camera.y * 0.3) % gridSize;
-  ctx.beginPath();
-  for(let x = offsetX - gridSize; x < canvas.width + gridSize; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
-  for(let y = offsetY - gridSize; y < canvas.height + gridSize; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
-  ctx.stroke(); ctx.restore();
+  // ふわふわ漂う雲(明るい空の演出)。ワールドの奥に screen 座標で描く。
+  clouds.forEach(c => {
+    c.x -= c.sp;
+    if (c.x < -140) { c.x = canvas.width + 140; c.yf = 0.03 + Math.random() * 0.42; }
+    drawCloud(c.x, c.yf * canvas.height, c.s, c.op);
+  });
   ctx.save(); ctx.translate(canvas.width/2, canvas.height/2);
   if (shake.mag > 0.05) {
     ctx.translate((Math.random() - 0.5) * 2 * shake.mag, (Math.random() - 0.5) * 2 * shake.mag);
