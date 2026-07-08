@@ -458,20 +458,49 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let audioCtx = null;
 
+let reverbBus = null;
 function ensureAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
-// 単音を鳴らす小さなシンセ。detuneした2発を重ねて厚みを出す(スーパーソウ風)。
-function playTone(freq, { at = 0, dur = 0.16, type = 'sine', gain = 0.07, glideTo = null, detune = 6, pan = 0 } = {}) {
+// 短い残響のインパルスレスポンスを生成し、全ての音に淡くかけて奥行きと気持ちよさを底上げする
+function getReverbBus() {
+  const ac = ensureAudio();
+  if (reverbBus) return reverbBus;
+  const convolver = ac.createConvolver();
+  const len = ac.sampleRate * 1.1;
+  const buf = ac.createBuffer(2, len, ac.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6);
+    }
+  }
+  convolver.buffer = buf;
+  const wetGain = ac.createGain(); wetGain.gain.value = 1;
+  convolver.connect(wetGain); wetGain.connect(ac.destination);
+  reverbBus = { convolver, node: wetGain };
+  return reverbBus;
+}
+
+// 単音を鳴らす小さなシンセ。detuneした2発を重ねて厚みを出し(スーパーソウ風)、
+// 温かみのあるローパス + 淡いリバーブを共通でかけて「気持ちよさ」を底上げする。
+function playTone(freq, { at = 0, dur = 0.16, type = 'sine', gain = 0.07, glideTo = null, detune = 6, pan = 0, reverb = 0.16, warmth = 3400 } = {}) {
   const ac = ensureAudio();
   const t0 = ac.currentTime + at;
   const g = ac.createGain();
-  let node = g;
-  if (ac.createStereoPanner && pan) { const p = ac.createStereoPanner(); p.pan.setValueAtTime(pan, t0); g.connect(p); p.connect(ac.destination); }
-  else g.connect(ac.destination);
+  const filter = ac.createBiquadFilter();
+  filter.type = 'lowpass'; filter.frequency.setValueAtTime(warmth, t0); filter.Q.value = 0.7;
+  g.connect(filter);
+  if (ac.createStereoPanner && pan) { const p = ac.createStereoPanner(); p.pan.setValueAtTime(pan, t0); filter.connect(p); p.connect(ac.destination); }
+  else filter.connect(ac.destination);
+  if (reverb > 0) {
+    const rb = getReverbBus();
+    const send = ac.createGain(); send.gain.value = reverb;
+    filter.connect(send); send.connect(rb.convolver);
+  }
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.linearRampToValueAtTime(gain, t0 + Math.min(0.012, dur * 0.2));
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
@@ -489,29 +518,52 @@ function playArpeggio(freqs, { step = 0.05, dur = 0.14, type = 'triangle', gain 
   freqs.forEach((f, i) => playTone(f, { at: i * step, dur, type, gain }));
 }
 
+// フィルター済みノイズバースト(着地の質感・崩れる足場のクラック音などに使用)
+function playThud(freq, { at = 0, dur = 0.1, gain = 0.16, reverb = 0.14 } = {}) {
+  const ac = ensureAudio();
+  const t0 = ac.currentTime + at;
+  const len = Math.ceil(ac.sampleRate * dur);
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+  const src = ac.createBufferSource(); src.buffer = buf;
+  const filter = ac.createBiquadFilter(); filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(freq, t0); filter.Q.value = 0.9;
+  const g = ac.createGain(); g.gain.setValueAtTime(gain, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(filter); filter.connect(g); g.connect(ac.destination);
+  if (reverb > 0) { const rb = getReverbBus(); const send = ac.createGain(); send.gain.value = reverb; g.connect(send); send.connect(rb.convolver); }
+  src.start(t0); src.stop(t0 + dur + 0.02);
+}
+
 const NOTE = { C4: 261.6, D4: 293.7, E4: 329.6, G4: 392.0, A4: 440.0, C5: 523.3, D5: 587.3, E5: 659.3, G5: 784.0, A5: 880.0, C6: 1046.5 };
 
 function playSound(type) {
   if (type === 'jump') {
-    playTone(360, { dur: 0.1, type: 'sine', gain: 0.055, glideTo: 620 });
+    playTone(360, { dur: 0.1, type: 'sine', gain: 0.06, glideTo: 640 });
+    playTone(720, { at: 0.015, dur: 0.08, type: 'sine', gain: 0.025, glideTo: 1080, detune: 0 }); // 小さなきらめきを重ねる
   } else if (type === 'land') {
-    playTone(160, { dur: 0.07, type: 'sine', gain: 0.05, glideTo: 90 });
+    playThud(220, { dur: 0.09, gain: 0.14 });
+    playTone(150, { dur: 0.09, type: 'sine', gain: 0.045, glideTo: 85 });
   } else if (type === 'booster') {
     playTone(420, { dur: 0.22, type: 'sawtooth', gain: 0.05, glideTo: 1100 });
     playTone(840, { dur: 0.22, type: 'sine', gain: 0.035, glideTo: 1600, detune: 0 });
+    playTone(NOTE.C6, { at: 0.16, dur: 0.2, type: 'triangle', gain: 0.05 }); // 到達の瞬間にきらっと鳴るベル
   } else if (type === 'slime') {
     playTone(300, { dur: 0.18, type: 'sine', gain: 0.06, glideTo: 480 });
     playTone(300, { at: 0.05, dur: 0.12, type: 'sine', gain: 0.03, glideTo: 360 });
   } else if (type === 'dead') {
-    playTone(260, { dur: 0.45, type: 'sine', gain: 0.08, glideTo: 90, detune: 3 });
+    playTone(260, { dur: 0.45, type: 'sine', gain: 0.08, glideTo: 90, detune: 3, warmth: 1200 });
+  } else if (type === 'crack') {
+    playThud(700, { dur: 0.07, gain: 0.1 });
+    playThud(300, { at: 0.03, dur: 0.1, gain: 0.08 });
   } else if (type === 'click') {
-    playTone(720, { dur: 0.045, type: 'sine', gain: 0.04, detune: 0 });
+    playTone(720, { dur: 0.045, type: 'sine', gain: 0.04, detune: 0, reverb: 0.08 });
   } else if (type === 'whoosh') {
     playTone(180, { dur: 0.12, type: 'sine', gain: 0.03, glideTo: 60 });
   } else if (type === 'achievement') {
-    playArpeggio([NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6], { step: 0.07, dur: 0.22, gain: 0.075 });
+    playArpeggio([NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6], { step: 0.07, dur: 0.24, gain: 0.078 });
   } else if (type === 'newbest') {
-    playArpeggio([NOTE.C4, NOTE.E4, NOTE.G4, NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6], { step: 0.045, dur: 0.3, type: 'triangle', gain: 0.07 });
+    playArpeggio([NOTE.C4, NOTE.E4, NOTE.G4, NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6], { step: 0.045, dur: 0.32, type: 'triangle', gain: 0.072 });
   }
 }
 
@@ -1266,7 +1318,7 @@ function update() {
       }
       if (p.type === 'conveyor') player.vx += p.dir * 0.9;
       if (p.type === 'gravity_anomaly' && (frameCount % 60 < 30)) player.gravityFactor = 0.4;
-      if (p.type === 'crumbling') p.isTouched = true;
+      if (p.type === 'crumbling' && !p.isTouched) { p.isTouched = true; playSound('crack'); }
       player.currentPlatformType = p.type;
       player.y = p.y - player.h;
       player.vy = 0; player.isGrounded = true;
@@ -1554,7 +1606,7 @@ window.onresize();
 initLevel();
 initControls();
 draw();
-setInterval(update, 1000/60);
+setInterval(update, 1000/90); // テンポを1.5倍に(60fps相当の物理更新を90回/秒実行=速度比を保ったまま全体が1.5倍速に)
 </script>
 </body>
 </html>
